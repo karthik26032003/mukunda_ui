@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mukunda Jewellers — Voice Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ── Mobile top bar ──────────────────────────────────────────────────── -->
+  <div class="mobile-topbar">
+    <button class="hamburger" id="hamburger" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="mobile-brand">
+      <img src="logo.png" alt="Mukunda Jewellers" class="mobile-logo" />
+      <span>Mukunda Jewellers</span>
+    </div>
+  </div>
+
+  <!-- ── Sidebar overlay (mobile) ─────────────────────────────────────────── -->
+  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+  <div class="app-shell">
+
+    <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <img src="logo.png" alt="Mukunda Jewellers" class="brand-logo" />
+        <div class="brand-info">
+          <span class="brand-name">Mukunda Jewellers</span>
+          <span class="brand-tagline">Less Expense, More Saving</span>
+          <span class="brand-sub">Voice Agent</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-page="calls" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.44 2 2 0 0 1 3.62 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          <span>Calls</span>
+        </a>
+
+        <a class="nav-item" data-page="usecases" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          </svg>
+          <span>Use Cases</span>
+        </a>
+
+        <a class="nav-item" data-page="logs" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          <span>Logs</span>
+        </a>
+
+        <a class="nav-item" data-page="usage" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Usage</span>
+        </a>
+
+        <a class="nav-item" data-page="whatsapp" href="#">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+          <span>WhatsApp</span>
+        </a>
+      </nav>
+
+      <!-- Theme toggle at sidebar bottom -->
+      <div class="sidebar-footer">
+        <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+          <!-- Sun (light mode icon) -->
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- Moon (dark mode icon) -->
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <span class="theme-toggle-label" id="theme-label">Dark Mode</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- ── Main Content ────────────────────────────────────────────────── -->
+    <main class="main-content">
+
+      <!-- CALLS PAGE -->
+      <div class="page active" id="page-calls">
+        <div class="page-header">
+          <h1 class="page-title">Calls</h1>
+          <p class="page-subtitle">Manage voice interactions with your customers</p>
+        </div>
+
+        <div class="tabs-bar">
+          <button class="tab-btn active" data-tab="voice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            Voice
+          </button>
+          <button class="tab-btn" data-tab="outbound">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.44 2 2 0 0 1 3.62 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            Outbound
+          </button>
+        </div>
+
+        <!-- ── Voice Tab ─────────────────────────────────────────────── -->
+        <div class="tab-panel active" id="tab-voice">
+          <div class="call-card">
+            <div class="call-top-bar">
+              <div class="call-status">
+                <span class="status-dot disconnected" id="status-dot"></span>
+                <span class="status-label" id="status-label">Disconnected</span>
+              </div>
+            </div>
+
+            <div class="error-banner hidden" id="error-banner"></div>
+
+            <div class="transcript-box" id="transcript-box">
+              <div class="transcript-empty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="36" height="36">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p>Transcript will appear here once the call starts</p>
+              </div>
+            </div>
+
+            <div class="call-controls">
+              <button class="btn-gold" id="btn-start">Start Call</button>
+              <button class="btn-icon-round" id="btn-mute" disabled title="Mute / Unmute">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+              <button class="btn-danger" id="btn-end" disabled>End Call</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Outbound Tab ──────────────────────────────────────────── -->
+        <div class="tab-panel hidden" id="tab-outbound">
+          <div class="outbound-card">
+
+            <!-- Excel upload -->
+            <div class="section-block">
+              <label class="section-label">Upload Contact List</label>
+              <div class="upload-zone" id="upload-zone">
+                <input type="file" id="excel-input" accept=".xlsx,.xls,.csv" hidden />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="34" height="34" class="upload-icon">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p class="upload-text">Drop an Excel file here or <label for="excel-input" class="upload-link">browse</label></p>
+                <p class="upload-hint">Reads the <code>phone_numbers</code> column &nbsp;·&nbsp; .xlsx / .xls / .csv</p>
+              </div>
+              <div class="upload-status hidden" id="upload-status"></div>
+            </div>
+
+            <div class="or-divider"><span>or add manually</span></div>
+
+            <!-- Manual input -->
+            <div class="section-block">
+              <label class="section-label" for="phone-input">Phone Number</label>
+              <div class="input-row">
+                <input type="tel" id="phone-input" placeholder="+91 98765 43210" autocomplete="tel" />
+                <button id="btn-add-number" class="btn-add" disabled>Add</button>
+              </div>
+              <span class="field-hint">International format: +[country code][number]</span>
+            </div>
+
+            <!-- Phone tags -->
+            <div id="phone-list" class="phone-tags hidden"></div>
+
+            <!-- Errors & Results -->
+            <div id="outbound-error" class="outbound-error hidden"></div>
+            <div id="call-results" class="call-results hidden"></div>
+
+            <button id="btn-call" class="btn-gold-full" disabled>Initiate Calls</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- USE CASES PAGE -->
+      <div class="page hidden" id="page-usecases">
+        <div class="page-header">
+          <h1 class="page-title">Use Cases</h1>
+          <p class="page-subtitle">Configure and manage your agent use cases</p>
+        </div>
+        <div class="coming-soon-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="48" height="48">
+            <rect x="2" y="7" width="20" height="14" rx="2"/>
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          </svg>
+          <h2>Coming Soon</h2>
+          <p>Use case management will be available in the next release.</p>
+        </div>
+      </div>
+
+      <!-- LOGS PAGE -->
+      <div class="page hidden" id="page-logs">
+        <div class="page-header logs-page-header">
+          <div>
+            <h1 class="page-title">Logs</h1>
+            <p class="page-subtitle">View call logs and interaction history</p>
+          </div>
+          <div class="logs-header-actions">
+
+            <!-- Filter -->
+            <div class="filter-wrap" id="filter-wrap">
+              <button class="btn-filter" id="btn-filter-logs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                </svg>
+                Filter
+                <span class="filter-badge hidden" id="filter-badge"></span>
+              </button>
+
+              <div class="filter-dropdown hidden" id="filter-dropdown">
+                <!-- Date range -->
+                <div class="filter-section">
+                  <p class="filter-section-label">Date Range</p>
+                  <div class="filter-date-row">
+                    <input type="date" id="filter-date-from" class="filter-date-input" />
+                    <span class="filter-date-sep">to</span>
+                    <input type="date" id="filter-date-to" class="filter-date-input" />
+                  </div>
+                </div>
+                <!-- Medium -->
+                <div class="filter-section">
+                  <p class="filter-section-label">Medium</p>
+                  <div class="filter-check-grid">
+                    <label class="filter-check"><input type="checkbox" value="plivo" /> Plivo</label>
+                    <label class="filter-check"><input type="checkbox" value="twilio" /> Twilio</label>
+                    <label class="filter-check"><input type="checkbox" value="webRtc" /> WebRTC</label>
+                    <label class="filter-check"><input type="checkbox" value="telnyx" /> Telnyx</label>
+                    <label class="filter-check"><input type="checkbox" value="exotel" /> Exotel</label>
+                    <label class="filter-check"><input type="checkbox" value="webSocket" /> WebSocket</label>
+                  </div>
+                </div>
+                <!-- Actions -->
+                <div class="filter-footer">
+                  <button class="btn-filter-clear" id="btn-filter-clear">Clear all</button>
+                  <button class="btn-filter-apply" id="btn-filter-apply">Apply</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Refresh -->
+            <button class="btn-refresh" id="btn-refresh-logs" title="Refresh logs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              Refresh
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="logs-state hidden" id="logs-loading">
+          <div class="logs-spinner"></div>
+          <span>Fetching call logs…</span>
+        </div>
+
+        <!-- Empty -->
+        <div class="logs-state hidden" id="logs-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="40" height="40">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          <span>No calls found for this agent.</span>
+        </div>
+
+        <!-- Error -->
+        <div class="logs-error hidden" id="logs-error"></div>
+
+        <!-- Calls table -->
+        <div class="logs-table-wrap hidden" id="logs-table-wrap">
+          <table class="logs-table" id="logs-table">
+            <colgroup>
+              <col id="col-date">
+              <col id="col-dur">
+              <col id="col-medium">
+              <col id="col-reason">
+              <col id="col-summary">
+              <col id="col-action">
+            </colgroup>
+            <thead>
+              <tr>
+                <th data-col="col-date">Date</th>
+                <th data-col="col-dur">Duration</th>
+                <th data-col="col-medium">Medium</th>
+                <th data-col="col-reason">End Reason</th>
+                <th data-col="col-summary">Summary</th>
+                <th data-col="col-action"></th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Load more -->
+        <div class="logs-pagination hidden" id="logs-pagination">
+          <button class="btn-load-more" id="btn-logs-more">Load more</button>
+        </div>
+      </div>
+
+      <!-- USAGE PAGE -->
+      <div class="page hidden" id="page-usage">
+        <div class="page-header">
+          <h1 class="page-title">Usage</h1>
+          <p class="page-subtitle">Analytics and billing metrics — last 30 days</p>
+        </div>
+
+        <!-- ── Stat Cards ──────────────────────────────────────────── -->
+        <div class="usage-stats-grid">
+
+          <div class="usage-stat-card">
+            <p class="usage-stat-label">Total Calls</p>
+            <p class="usage-stat-value">247</p>
+            <p class="usage-stat-sub">Last 30 days</p>
+          </div>
+
+          <div class="usage-stat-card">
+            <p class="usage-stat-label">Join Rate</p>
+            <p class="usage-stat-value">94<span class="usage-stat-unit">%</span></p>
+            <p class="usage-stat-sub">Calls that connected</p>
+          </div>
+
+          <div class="usage-stat-card">
+            <p class="usage-stat-label">Billed Minutes</p>
+            <p class="usage-stat-value">498<span class="usage-stat-unit">m</span></p>
+            <p class="usage-stat-sub">8 hrs 18 min total</p>
+          </div>
+
+          <div class="usage-stat-card">
+            <p class="usage-stat-label">Avg Duration</p>
+            <p class="usage-stat-value">2.0<span class="usage-stat-unit">m</span></p>
+            <p class="usage-stat-sub">Per connected call</p>
+          </div>
+
+        </div>
+
+        <!-- ── Trend Charts ────────────────────────────────────────── -->
+        <div class="usage-charts-row">
+
+          <!-- Calls Over Time -->
+          <div class="usage-chart-card">
+            <div class="usage-chart-meta">
+              <div>
+                <p class="usage-chart-title">Calls Over Time</p>
+                <p class="usage-chart-sub">Daily call volume</p>
+              </div>
+              <p class="usage-chart-big">247</p>
+            </div>
+            <svg class="usage-chart-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad-calls" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#C8A951" stop-opacity="0.28"/>
+                  <stop offset="100%" stop-color="#C8A951" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <polygon fill="url(#grad-calls)" points="0,80 0,62 20,55 40,60 60,48 80,52 100,40 120,44 140,30 160,36 180,26 200,32 220,22 240,28 260,18 280,14 300,20 300,80"/>
+              <polyline fill="none" stroke="#C8A951" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                points="0,62 20,55 40,60 60,48 80,52 100,40 120,44 140,30 160,36 180,26 200,32 220,22 240,28 260,18 280,14 300,20"/>
+            </svg>
+            <div class="usage-chart-axis">
+              <span>Mar 9</span><span>Mar 15</span><span>Mar 22</span><span>Mar 30</span>
+            </div>
+          </div>
+
+          <!-- Billed Duration -->
+          <div class="usage-chart-card">
+            <div class="usage-chart-meta">
+              <div>
+                <p class="usage-chart-title">Billed Duration</p>
+                <p class="usage-chart-sub">Minutes per day</p>
+              </div>
+              <p class="usage-chart-big">498m</p>
+            </div>
+            <svg class="usage-chart-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="grad-billed" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0A1628" stop-opacity="0.18"/>
+                  <stop offset="100%" stop-color="#0A1628" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <polygon fill="url(#grad-billed)" points="0,80 0,64 20,58 40,62 60,50 80,54 100,42 120,46 140,34 160,38 180,28 200,34 220,24 240,30 260,20 280,16 300,22 300,80"/>
+              <polyline fill="none" stroke="#0A1628" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                points="0,64 20,58 40,62 60,50 80,54 100,42 120,46 140,34 160,38 180,28 200,34 220,24 240,30 260,20 280,16 300,22"/>
+            </svg>
+            <div class="usage-chart-axis">
+              <span>Mar 9</span><span>Mar 15</span><span>Mar 22</span><span>Mar 30</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── Minutes Counter ─────────────────────────────────────── -->
+        <div class="usage-minutes-card">
+          <div class="usage-minutes-body">
+            <div>
+              <p class="usage-minutes-big">8 hrs 18 min</p>
+              <p class="usage-minutes-label">Billed Duration — Last 30 Days</p>
+            </div>
+            <div class="usage-minutes-breakdown">
+              <div class="usage-minutes-item">
+                <span class="usage-minutes-num">247</span>
+                <span class="usage-minutes-desc">Total calls</span>
+              </div>
+              <div class="usage-minutes-divider"></div>
+              <div class="usage-minutes-item">
+                <span class="usage-minutes-num">498m</span>
+                <span class="usage-minutes-desc">Total minutes</span>
+              </div>
+              <div class="usage-minutes-divider"></div>
+              <div class="usage-minutes-item">
+                <span class="usage-minutes-num">2.0m</span>
+                <span class="usage-minutes-desc">Avg per call</span>
+              </div>
+            </div>
+          </div>
+          <div class="usage-minutes-bar-wrap">
+            <div class="usage-minutes-bar-fill" style="width: 69%"></div>
+          </div>
+          <p class="usage-minutes-caption">69% of monthly estimate used</p>
+        </div>
+
+      </div>
+
+      <!-- WHATSAPP PAGE -->
+      <div class="page hidden" id="page-whatsapp">
+        <div class="page-header">
+          <h1 class="page-title">WhatsApp</h1>
+          <p class="page-subtitle">Manage WhatsApp messaging campaigns</p>
+        </div>
+        <div class="coming-soon-card">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="48" height="48">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+          <h2>Coming Soon</h2>
+          <p>WhatsApp integration will be available in the next release.</p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Summary popup -->
+  <div class="summary-popup hidden" id="summary-popup"></div>
+
+  <!-- Transcript Drawer -->
+  <div class="drawer-overlay hidden" id="drawer-overlay">
+    <div class="drawer-panel" id="drawer-panel">
+      <div class="drawer-header">
+        <div>
+          <p class="drawer-label">Call Transcript</p>
+          <p class="drawer-callid" id="drawer-callid"></p>
+        </div>
+        <div class="drawer-header-actions">
+          <button class="btn-play-recording" id="btn-play-recording" title="Play call recording">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Play Recording
+          </button>
+          <button class="drawer-close" id="drawer-close" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recording audio player -->
+      <div class="recording-player hidden" id="recording-player">
+        <audio id="recording-audio" controls></audio>
+        <p class="recording-error hidden" id="recording-error">Recording not available for this call.</p>
+      </div>
+
+      <div class="drawer-loading hidden" id="drawer-loading">
+        <div class="logs-spinner"></div>
+        <span>Loading transcript…</span>
+      </div>
+      <div class="drawer-empty hidden" id="drawer-empty">No transcript available for this call.</div>
+      <div class="drawer-messages" id="drawer-messages"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
