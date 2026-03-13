@@ -26,6 +26,7 @@ const callResults   = document.getElementById('call-results');
 const excelInput    = document.getElementById('excel-input');
 const uploadZone    = document.getElementById('upload-zone');
 const uploadStatus  = document.getElementById('upload-status');
+const btnDownloadTemplate = document.getElementById('btn-download-template');
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  MOBILE SIDEBAR TOGGLE
@@ -240,6 +241,18 @@ async function handleExcelFile(file) {
     showOutboundError(`Failed to read file: ${err.message}`);
   }
 }
+
+// Download template CSV
+btnDownloadTemplate.addEventListener('click', () => {
+  const csv = 'phone_numbers,Names\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'contacts_template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 // Click on zone (but not on the label — label opens file dialog natively)
 uploadZone.addEventListener('click', e => {

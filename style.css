@@ -364,6 +364,15 @@ input  { font-family: inherit; }
 }
 
 .section-block { display: flex; flex-direction: column; gap: 9px; }
+.section-label-row { display: flex; align-items: center; justify-content: space-between; }
+.btn-template {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; color: var(--gold);
+  background: transparent; border: 1px solid var(--gold);
+  border-radius: 6px; padding: 4px 10px; cursor: pointer;
+  letter-spacing: 0.04em; transition: background 0.15s, color 0.15s;
+}
+.btn-template:hover { background: var(--gold); color: #fff; }
 .section-label {
   font-size: 11px;
   font-weight: 600;
