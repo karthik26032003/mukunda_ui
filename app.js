@@ -1,4 +1,4 @@
-import { UltravoxSession } from 'https://esm.sh/ultravox-client';
+import { UltravoxSession } from './ultravox-client.js';
 
 const BACKEND_URL = window.BACKEND_URL || 'http://localhost:8000';
 
@@ -555,28 +555,8 @@ function _updateFilterBadge() {
   btnFilterLogs.classList.toggle('active', n > 0);
 }
 
-function _applyFilters() {
-  let filtered = allCalls;
-  if (activeFilters.dateFrom) {
-    const from = new Date(activeFilters.dateFrom);
-    filtered = filtered.filter(c => c.created && new Date(c.created) >= from);
-  }
-  if (activeFilters.dateTo) {
-    const to = new Date(activeFilters.dateTo);
-    to.setHours(23, 59, 59, 999);
-    filtered = filtered.filter(c => c.created && new Date(c.created) <= to);
-  }
-  if (activeFilters.mediums.size > 0) {
-    filtered = filtered.filter(c => activeFilters.mediums.has(c.medium));
-  }
-  logsTbody.innerHTML = '';
-  if (filtered.length === 0) {
-    _setLogsView('empty');
-  } else {
-    _setLogsView('table');
-    for (const call of filtered) logsTbody.appendChild(_renderRow(call));
-  }
-  _updateFilterBadge();
+function _isFiltering() {
+  return !!(activeFilters.dateFrom || activeFilters.dateTo || activeFilters.mediums.size > 0);
 }
 
 // Toggle filter dropdown
@@ -600,7 +580,7 @@ btnFilterApply.addEventListener('click', () => {
     [...filterCheckboxes].filter(cb => cb.checked).map(cb => cb.value)
   );
   filterDropdown.classList.add('hidden');
-  _applyFilters();
+  loadLogs(true);  // re-fetch from server with filters
 });
 
 btnFilterClear.addEventListener('click', () => {
@@ -609,10 +589,8 @@ btnFilterClear.addEventListener('click', () => {
   filterCheckboxes.forEach(cb => { cb.checked = false; });
   activeFilters = { dateFrom: '', dateTo: '', mediums: new Set() };
   filterDropdown.classList.add('hidden');
-  logsTbody.innerHTML = '';
-  _setLogsView(allCalls.length ? 'table' : 'empty');
-  if (allCalls.length) for (const call of allCalls) logsTbody.appendChild(_renderRow(call));
   _updateFilterBadge();
+  loadLogs(true);  // re-fetch without filters
 });
 
 // ── Load logs ─────────────────────────────────────────────────────────────────
@@ -627,8 +605,13 @@ async function loadLogs(reset = true) {
   _setLogsView('loading');
 
   try {
+    const filtering = _isFiltering();
     const params = new URLSearchParams({ page_size: 20 });
-    if (logsCursor) params.set('cursor', logsCursor);
+    if (!filtering && logsCursor) params.set('cursor', logsCursor);
+    if (activeFilters.dateFrom)       params.set('date_from', activeFilters.dateFrom);
+    if (activeFilters.dateTo)         params.set('date_to',   activeFilters.dateTo);
+    if (activeFilters.mediums.size === 1) params.set('medium', [...activeFilters.mediums][0]);
+
     const res = await fetch(`${BACKEND_URL}/logs/calls?${params}`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -639,17 +622,32 @@ async function loadLogs(reset = true) {
     if (reset && data.results.length === 0) {
       _setLogsView('empty');
       logsPagination.classList.add('hidden');
+      _updateFilterBadge();
       return;
     }
 
-    allCalls.push(...data.results);  // accumulate for filtering
+    if (filtering || reset) {
+      // Filtered results or fresh load: replace, don't accumulate
+      allCalls = data.results;
+    } else {
+      // "Load more" without filters: append
+      allCalls.push(...data.results);
+    }
+
     _setLogsView('table');
-    _appendLogRows(data.results);
+    if (reset || filtering) {
+      logsTbody.innerHTML = '';
+      _appendLogRows(allCalls);
+    } else {
+      _appendLogRows(data.results);
+    }
     initColResize();
 
-    logsHasMore = !!data.next;
+    // Hide "Load more" when filters are active (server already returned all matches)
+    logsHasMore = !filtering && !!data.next;
     logsCursor  = data.next || null;
     logsPagination.classList.toggle('hidden', !logsHasMore);
+    _updateFilterBadge();
   } catch (err) {
     logsError.textContent = `Failed to load logs: ${err.message}`;
     _setLogsView(logsTbody.children.length ? 'table' : 'error');
