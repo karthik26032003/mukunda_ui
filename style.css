@@ -534,6 +534,11 @@ input  { font-family: inherit; }
    LOGS PAGE — full-screen spreadsheet layout
    ════════════════════════════════════════════════════════════════ */
 
+/* Calls page fills the entire main-content area */
+#page-calls.active {
+  max-width: none;
+}
+
 /* Logs page fills the entire main-content area */
 #page-logs.active {
   display: flex;
