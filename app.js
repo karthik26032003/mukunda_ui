@@ -211,7 +211,7 @@ async function parseExcelFile(file) {
   const buffer   = await file.arrayBuffer();
   const workbook = window.XLSX.read(buffer, { type: 'array' });
   const sheet    = workbook.Sheets[workbook.SheetNames[0]];
-  const rows     = window.XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  const rows     = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
 
   const numbers = [];
   for (const row of rows) {
