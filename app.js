@@ -203,7 +203,9 @@ btnMute.addEventListener('click', toggleMute);
 //  EXCEL PARSING
 // ═════════════════════════════════════════════════════════════════════════════
 
-const E164_RE = /^\+\d{7,15}$/;
+// Accepts: 10-digit Indian (9876543210), 12-digit with country code (919876543210),
+// or full E.164 (+919876543210). Backend normalizes all to +91XXXXXXXXXX.
+const PHONE_RE = /^(\+91|91)?\d{10}$/;
 
 async function parseExcelFile(file) {
   const buffer   = await file.arrayBuffer();
@@ -216,7 +218,7 @@ async function parseExcelFile(file) {
     const key = Object.keys(row).find(k => k.toLowerCase() === 'phone_numbers');
     if (!key) continue;
     const val = String(row[key]).trim().replace(/[\s\-]/g, '');
-    if (E164_RE.test(val)) numbers.push(val);
+    if (PHONE_RE.test(val)) numbers.push(val);
   }
   return numbers;
 }
@@ -280,7 +282,7 @@ excelInput.addEventListener('change', async () => {
 
 phoneInput.addEventListener('input', () => {
   const val = phoneInput.value.trim().replace(/[\s\-]/g, '');
-  btnAddNumber.disabled = !E164_RE.test(val);
+  btnAddNumber.disabled = !PHONE_RE.test(val);
   clearOutboundError();
 });
 phoneInput.addEventListener('keydown', e => { if (e.key === 'Enter') addNumber(); });
@@ -288,7 +290,7 @@ btnAddNumber.addEventListener('click', addNumber);
 
 function addNumber() {
   const val = phoneInput.value.trim().replace(/[\s\-]/g, '');
-  if (!E164_RE.test(val)) { showOutboundError('Enter a valid E.164 number, e.g. +919876543210'); return; }
+  if (!PHONE_RE.test(val)) { showOutboundError('Enter a valid 10-digit number, e.g. 9876543210'); return; }
   if (phoneNumbers.includes(val)) { showOutboundError(`${val} is already in the list.`); return; }
   clearOutboundError();
   phoneNumbers.push(val);
