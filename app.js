@@ -354,15 +354,15 @@ async function initiateOutboundCall() {
     const data = await res.json();
     callResults.classList.remove('hidden');
 
-    for (const r of data.results) {
-      const item   = document.createElement('div');  item.className = `call-result-item ${r.success ? 'success' : 'failure'}`;
-      const icon   = document.createElement('span'); icon.className = 'call-result-icon';   icon.textContent = r.success ? '✓' : '✗';
-      const num    = document.createElement('span'); num.className  = 'call-result-number'; num.textContent  = r.phone_number;
-      const detail = document.createElement('span'); detail.className = 'call-result-detail'; detail.textContent = r.success ? `ID: ${r.callId}` : r.error;
-      item.appendChild(icon); item.appendChild(num); item.appendChild(detail);
-      callResults.appendChild(item);
-    }
-    btnCall.textContent = `${data.succeeded}/${data.total} Calls Placed`;
+    // New batch queue response: {batch_id, total, started, queued, message}
+    const summary = document.createElement('div');
+    summary.className = 'call-result-item success';
+    summary.innerHTML =
+      `<span class="call-result-icon">✓</span>` +
+      `<span class="call-result-number">${data.message}</span>` +
+      `<span class="call-result-detail">Batch ID: ${data.batch_id}</span>`;
+    callResults.appendChild(summary);
+    btnCall.textContent = `${data.started} Active · ${data.queued} Queued`;
   } catch (err) {
     showOutboundError(`Call failed: ${err.message}`);
     btnCall.disabled = false;
