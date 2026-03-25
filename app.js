@@ -546,67 +546,76 @@ function _appendLogRows(results) {
 }
 
 // ── Filter state & logic ───────────────────────────────────────────────────────
-const btnFilterLogs  = document.getElementById('btn-filter-logs');
-const filterDropdown = document.getElementById('filter-dropdown');
-const filterBadge    = document.getElementById('filter-badge');
-const filterDateFrom = document.getElementById('filter-date-from');
-const filterDateTo   = document.getElementById('filter-date-to');
-const btnFilterApply = document.getElementById('btn-filter-apply');
-const btnFilterClear = document.getElementById('btn-filter-clear');
-const filterCheckboxes = filterDropdown.querySelectorAll('input[type="checkbox"]');
+const btnFilterLogs    = document.getElementById('btn-filter-logs');
+const filterDropdown   = document.getElementById('filter-dropdown');
+const filterBadge      = document.getElementById('filter-badge');
+const filterDateFrom   = document.getElementById('filter-date-from');
+const filterDateTo     = document.getElementById('filter-date-to');
+const filterMediumSel  = document.getElementById('filter-medium-select');
+const btnFilterApply   = document.getElementById('btn-filter-apply');
+const btnFilterClear   = document.getElementById('btn-filter-clear');
+const btnExportExcel   = document.getElementById('btn-export-excel');
 
-let activeFilters = { dateFrom: '', dateTo: '', mediums: new Set() };
+let activeFilters = { dateFrom: '', dateTo: '', medium: '' };
 
 function _countActiveFilters() {
-  let n = 0;
-  if (activeFilters.dateFrom || activeFilters.dateTo) n++;
-  if (activeFilters.mediums.size > 0) n++;
-  return n;
+  return [activeFilters.dateFrom, activeFilters.dateTo, activeFilters.medium].filter(Boolean).length;
 }
 
 function _updateFilterBadge() {
   const n = _countActiveFilters();
   filterBadge.textContent = n;
   filterBadge.classList.toggle('hidden', n === 0);
-  btnFilterLogs.classList.toggle('active', n > 0);
+  btnFilterLogs.classList.toggle('active', n > 0 || !filterDropdown.classList.contains('hidden'));
 }
 
 function _isFiltering() {
-  return !!(activeFilters.dateFrom || activeFilters.dateTo || activeFilters.mediums.size > 0);
+  return !!(activeFilters.dateFrom || activeFilters.dateTo || activeFilters.medium);
 }
 
-// Toggle filter dropdown
-btnFilterLogs.addEventListener('click', e => {
-  e.stopPropagation();
+// Toggle filter panel
+btnFilterLogs.addEventListener('click', () => {
   filterDropdown.classList.toggle('hidden');
   btnFilterLogs.classList.toggle('active', !filterDropdown.classList.contains('hidden') || _countActiveFilters() > 0);
-});
-
-// Close dropdown on outside click
-document.addEventListener('click', e => {
-  if (!filterDropdown.classList.contains('hidden') && !document.getElementById('filter-wrap').contains(e.target)) {
-    filterDropdown.classList.add('hidden');
-  }
 });
 
 btnFilterApply.addEventListener('click', () => {
   activeFilters.dateFrom = filterDateFrom.value;
   activeFilters.dateTo   = filterDateTo.value;
-  activeFilters.mediums  = new Set(
-    [...filterCheckboxes].filter(cb => cb.checked).map(cb => cb.value)
-  );
-  filterDropdown.classList.add('hidden');
-  loadLogs(true);  // re-fetch from server with filters
+  activeFilters.medium   = filterMediumSel.value;
+  _updateFilterBadge();
+  loadLogs(true);
 });
 
 btnFilterClear.addEventListener('click', () => {
-  filterDateFrom.value = '';
-  filterDateTo.value   = '';
-  filterCheckboxes.forEach(cb => { cb.checked = false; });
-  activeFilters = { dateFrom: '', dateTo: '', mediums: new Set() };
+  filterDateFrom.value  = '';
+  filterDateTo.value    = '';
+  filterMediumSel.value = '';
+  activeFilters = { dateFrom: '', dateTo: '', medium: '' };
   filterDropdown.classList.add('hidden');
   _updateFilterBadge();
-  loadLogs(true);  // re-fetch without filters
+  loadLogs(true);
+});
+
+// Export Excel
+btnExportExcel.addEventListener('click', () => {
+  if (!allCalls.length) return;
+  const rows = [['Date', 'Duration', 'Medium', 'End Reason', 'Summary']];
+  for (const c of allCalls) {
+    rows.push([
+      c.created ? new Date(c.created).toLocaleString('en-IN') : '',
+      c.duration || '',
+      c.medium   || '',
+      c.endReason || '',
+      c.shortSummary || '',
+    ]);
+  }
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a'); a.href = url;
+  a.download = `call_logs_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
 });
 
 // ── Load logs ─────────────────────────────────────────────────────────────────
@@ -626,7 +635,7 @@ async function loadLogs(reset = true) {
     if (!filtering && logsCursor) params.set('cursor', logsCursor);
     if (activeFilters.dateFrom)       params.set('date_from', activeFilters.dateFrom);
     if (activeFilters.dateTo)         params.set('date_to',   activeFilters.dateTo);
-    if (activeFilters.mediums.size === 1) params.set('medium', [...activeFilters.mediums][0]);
+    if (activeFilters.medium) params.set('medium', activeFilters.medium);
 
     const res = await fetch(`${BACKEND_URL}/logs/calls?${params}`);
     if (!res.ok) {

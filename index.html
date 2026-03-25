@@ -230,62 +230,66 @@
 
       <!-- LOGS PAGE -->
       <div class="page hidden" id="page-logs">
-        <div class="page-header logs-page-header">
+        <div class="logs-page-header">
           <div>
-            <h1 class="page-title">Logs</h1>
-            <p class="page-subtitle">View call logs and interaction history</p>
+            <h1 class="page-title">Call Logs</h1>
+            <p class="page-subtitle">History of all initiated calls</p>
           </div>
           <div class="logs-header-actions">
-
+            <!-- Export Excel -->
+            <button class="logs-action-btn" id="btn-export-excel">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Export Excel
+            </button>
             <!-- Filter -->
-            <div class="filter-wrap" id="filter-wrap">
-              <button class="btn-filter" id="btn-filter-logs">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-                </svg>
-                Filter
-                <span class="filter-badge hidden" id="filter-badge"></span>
-              </button>
-
-              <div class="filter-dropdown hidden" id="filter-dropdown">
-                <!-- Date range -->
-                <div class="filter-section">
-                  <p class="filter-section-label">Date Range</p>
-                  <div class="filter-date-row">
-                    <input type="date" id="filter-date-from" class="filter-date-input" />
-                    <span class="filter-date-sep">to</span>
-                    <input type="date" id="filter-date-to" class="filter-date-input" />
-                  </div>
-                </div>
-                <!-- Medium -->
-                <div class="filter-section">
-                  <p class="filter-section-label">Medium</p>
-                  <div class="filter-check-grid">
-                    <label class="filter-check"><input type="checkbox" value="plivo" /> Plivo</label>
-                    <label class="filter-check"><input type="checkbox" value="twilio" /> Twilio</label>
-                    <label class="filter-check"><input type="checkbox" value="webRtc" /> WebRTC</label>
-                    <label class="filter-check"><input type="checkbox" value="telnyx" /> Telnyx</label>
-                    <label class="filter-check"><input type="checkbox" value="exotel" /> Exotel</label>
-                    <label class="filter-check"><input type="checkbox" value="webSocket" /> WebSocket</label>
-                  </div>
-                </div>
-                <!-- Actions -->
-                <div class="filter-footer">
-                  <button class="btn-filter-clear" id="btn-filter-clear">Clear all</button>
-                  <button class="btn-filter-apply" id="btn-filter-apply">Apply</button>
-                </div>
-              </div>
-            </div>
-
+            <button class="logs-action-btn" id="btn-filter-logs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+              </svg>
+              Filter
+              <span class="filter-badge hidden" id="filter-badge"></span>
+            </button>
             <!-- Refresh -->
-            <button class="btn-refresh" id="btn-refresh-logs" title="Refresh logs">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15">
+            <button class="logs-action-btn" id="btn-refresh-logs" title="Refresh logs">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
                 <polyline points="23 4 23 10 17 10"/>
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
               </svg>
               Refresh
             </button>
+          </div>
+        </div>
 
+        <!-- Inline filter panel -->
+        <div class="logs-filter-panel hidden" id="filter-dropdown">
+          <div class="logs-filter-row">
+            <div class="logs-filter-field">
+              <label class="logs-filter-label">DATE FROM</label>
+              <input type="date" id="filter-date-from" class="logs-filter-input" />
+            </div>
+            <div class="logs-filter-field">
+              <label class="logs-filter-label">DATE TO</label>
+              <input type="date" id="filter-date-to" class="logs-filter-input" />
+            </div>
+            <div class="logs-filter-field">
+              <label class="logs-filter-label">MEDIUM</label>
+              <select id="filter-medium-select" class="logs-filter-input">
+                <option value="">All</option>
+                <option value="plivo">Plivo</option>
+                <option value="twilio">Twilio</option>
+                <option value="webRtc">WebRTC</option>
+                <option value="telnyx">Telnyx</option>
+                <option value="exotel">Exotel</option>
+                <option value="webSocket">WebSocket</option>
+                <option value="sip">SIP</option>
+              </select>
+            </div>
+            <div class="logs-filter-actions">
+              <button class="btn-filter-clear" id="btn-filter-clear">&#10005; Clear</button>
+              <button class="btn-filter-apply" id="btn-filter-apply">Apply</button>
+            </div>
           </div>
         </div>
 
