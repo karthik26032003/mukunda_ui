@@ -786,5 +786,138 @@ document.querySelectorAll('.nav-item').forEach(item => {
   }
 });
 
+// ── Usage ─────────────────────────────────────────────────────────────────────
+const usageLoading       = document.getElementById('usage-loading');
+const usageMonthLabel    = document.getElementById('usage-month-label');
+const usagePrevBtn       = document.getElementById('usage-prev-month');
+const usageNextBtn       = document.getElementById('usage-next-month');
+const usageSubtitle      = document.getElementById('usage-subtitle');
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let usageYear  = new Date().getFullYear();
+let usageMonth = new Date().getMonth() + 1; // 1-based
+
+function _drawChart(lineId, areaId, axisId, values, color) {
+  const line = document.getElementById(lineId);
+  const area = document.getElementById(areaId);
+  const axis = document.getElementById(axisId);
+  if (!line || !area) return;
+
+  const n = values.length;
+  if (n === 0 || values.every(v => v === 0)) {
+    line.setAttribute('points', `0,75 300,75`);
+    area.setAttribute('points', `0,80 0,75 300,75 300,80`);
+    return;
+  }
+
+  const max = Math.max(...values) || 1;
+  const pts = values.map((v, i) => {
+    const x = n === 1 ? 150 : (i / (n - 1)) * 300;
+    const y = 10 + (1 - v / max) * 65;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  line.setAttribute('stroke', color);
+  line.setAttribute('points', pts.join(' '));
+  area.setAttribute('points', `0,80 ${pts.join(' ')} 300,80`);
+
+  // Axis labels: show 4 evenly spaced dates
+  const spans = axis.querySelectorAll('span');
+  const indices = [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1];
+  indices.forEach((idx, i) => {
+    if (spans[i]) {
+      const d = new Date(values._dates[idx] + 'T00:00:00Z');
+      spans[i].textContent = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    }
+  });
+}
+
+async function loadUsage() {
+  usageLoading.classList.remove('hidden');
+  const monthName = MONTH_NAMES[usageMonth - 1];
+  usageMonthLabel.textContent = `${monthName} ${usageYear}`;
+  usageSubtitle.textContent   = `Analytics for ${monthName} ${usageYear}`;
+
+  // Disable next button if already on current month
+  const now = new Date();
+  const isCurrentMonth = usageYear === now.getFullYear() && usageMonth === (now.getMonth() + 1);
+  usageNextBtn.disabled = isCurrentMonth;
+  usageNextBtn.style.opacity = isCurrentMonth ? '0.35' : '1';
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/logs/usage?year=${usageYear}&month=${usageMonth}`);
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    const d = await res.json();
+
+    // Stat cards
+    document.getElementById('usage-total-calls').textContent = d.total_calls;
+    document.getElementById('usage-join-rate').innerHTML     = `${d.join_rate}<span class="usage-stat-unit">%</span>`;
+    document.getElementById('usage-billed-min').innerHTML    = `${d.total_billed_min}<span class="usage-stat-unit">m</span>`;
+    const avgMin = d.avg_dur_secs ? (d.avg_dur_secs / 60).toFixed(1) : '0';
+    document.getElementById('usage-avg-dur').innerHTML       = `${avgMin}<span class="usage-stat-unit">m</span>`;
+
+    // Chart big numbers
+    document.getElementById('usage-chart-calls-big').textContent = d.total_calls;
+    document.getElementById('usage-chart-min-big').textContent   = `${d.total_billed_min}m`;
+
+    // Summary card
+    const totalSecs = Math.round(d.total_billed_min * 60);
+    const hrs = Math.floor(totalSecs / 3600), mins = Math.floor((totalSecs % 3600) / 60);
+    document.getElementById('usage-summary-hrs').textContent   = `${hrs} hrs ${mins} min`;
+    document.getElementById('usage-summary-label').textContent = `Billed Duration — ${monthName} ${usageYear}`;
+    document.getElementById('usage-sum-calls').textContent     = d.total_calls;
+    document.getElementById('usage-sum-min').textContent       = `${d.total_billed_min}m`;
+    document.getElementById('usage-sum-avg').textContent       = avgMin + 'm';
+
+    // Days elapsed progress bar
+    const today      = new Date();
+    const daysTotal  = d.days_in_month;
+    const daysElapsed = isCurrentMonth
+      ? today.getDate()
+      : daysTotal;
+    const pct = Math.round((daysElapsed / daysTotal) * 100);
+    document.getElementById('usage-days-bar').style.width    = `${pct}%`;
+    document.getElementById('usage-days-caption').textContent =
+      isCurrentMonth
+        ? `${daysElapsed} of ${daysTotal} days elapsed this month`
+        : `${monthName} ${usageYear} — full month`;
+
+    // Charts
+    const callVals  = d.daily.map(x => x.calls);
+    const minVals   = d.daily.map(x => x.billed_min);
+    callVals._dates = d.daily.map(x => x.date);
+    minVals._dates  = d.daily.map(x => x.date);
+    _drawChart('usage-calls-line', 'usage-calls-area', 'usage-calls-axis', callVals, '#C8A951');
+    _drawChart('usage-min-line',   'usage-min-area',   'usage-min-axis',   minVals,  '#C8A951');
+
+  } catch (err) {
+    document.getElementById('usage-summary-hrs').textContent = 'Error loading data';
+    console.error('Usage load error:', err);
+  } finally {
+    usageLoading.classList.add('hidden');
+  }
+}
+
+usagePrevBtn.addEventListener('click', () => {
+  usageMonth--;
+  if (usageMonth < 1) { usageMonth = 12; usageYear--; }
+  loadUsage();
+});
+
+usageNextBtn.addEventListener('click', () => {
+  const now = new Date();
+  if (usageYear === now.getFullYear() && usageMonth === now.getMonth() + 1) return;
+  usageMonth++;
+  if (usageMonth > 12) { usageMonth = 1; usageYear++; }
+  loadUsage();
+});
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  if (item.dataset.page === 'usage') {
+    item.addEventListener('click', () => loadUsage());
+  }
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 setStatus('disconnected');

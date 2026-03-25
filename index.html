@@ -340,43 +340,51 @@
 
       <!-- USAGE PAGE -->
       <div class="page hidden" id="page-usage">
-        <div class="page-header">
-          <h1 class="page-title">Usage</h1>
-          <p class="page-subtitle">Analytics and billing metrics — last 30 days</p>
+        <div class="page-header usage-page-header">
+          <div>
+            <h1 class="page-title">Usage</h1>
+            <p class="page-subtitle" id="usage-subtitle">Analytics and billing metrics</p>
+          </div>
+          <!-- Month navigation -->
+          <div class="usage-month-nav">
+            <button class="usage-month-btn" id="usage-prev-month" title="Previous month">&#8592;</button>
+            <span class="usage-month-label" id="usage-month-label">March 2026</span>
+            <button class="usage-month-btn" id="usage-next-month" title="Next month">&#8594;</button>
+          </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="usage-loading hidden" id="usage-loading">
+          <div class="logs-spinner"></div>
+          <span>Loading usage data…</span>
         </div>
 
         <!-- ── Stat Cards ──────────────────────────────────────────── -->
         <div class="usage-stats-grid">
-
           <div class="usage-stat-card">
             <p class="usage-stat-label">Total Calls</p>
-            <p class="usage-stat-value">247</p>
-            <p class="usage-stat-sub">Last 30 days</p>
+            <p class="usage-stat-value" id="usage-total-calls">—</p>
+            <p class="usage-stat-sub" id="usage-total-calls-sub">This month</p>
           </div>
-
           <div class="usage-stat-card">
             <p class="usage-stat-label">Join Rate</p>
-            <p class="usage-stat-value">94<span class="usage-stat-unit">%</span></p>
+            <p class="usage-stat-value" id="usage-join-rate">—</p>
             <p class="usage-stat-sub">Calls that connected</p>
           </div>
-
           <div class="usage-stat-card">
             <p class="usage-stat-label">Billed Minutes</p>
-            <p class="usage-stat-value">498<span class="usage-stat-unit">m</span></p>
-            <p class="usage-stat-sub">8 hrs 18 min total</p>
+            <p class="usage-stat-value" id="usage-billed-min">—</p>
+            <p class="usage-stat-sub" id="usage-billed-sub">Total this month</p>
           </div>
-
           <div class="usage-stat-card">
             <p class="usage-stat-label">Avg Duration</p>
-            <p class="usage-stat-value">2.0<span class="usage-stat-unit">m</span></p>
+            <p class="usage-stat-value" id="usage-avg-dur">—</p>
             <p class="usage-stat-sub">Per connected call</p>
           </div>
-
         </div>
 
         <!-- ── Trend Charts ────────────────────────────────────────── -->
         <div class="usage-charts-row">
-
           <!-- Calls Over Time -->
           <div class="usage-chart-card">
             <div class="usage-chart-meta">
@@ -384,21 +392,20 @@
                 <p class="usage-chart-title">Calls Over Time</p>
                 <p class="usage-chart-sub">Daily call volume</p>
               </div>
-              <p class="usage-chart-big">247</p>
+              <p class="usage-chart-big" id="usage-chart-calls-big">—</p>
             </div>
-            <svg class="usage-chart-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
+            <svg class="usage-chart-svg" id="usage-chart-calls-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="grad-calls" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#C8A951" stop-opacity="0.28"/>
                   <stop offset="100%" stop-color="#C8A951" stop-opacity="0"/>
                 </linearGradient>
               </defs>
-              <polygon fill="url(#grad-calls)" points="0,80 0,62 20,55 40,60 60,48 80,52 100,40 120,44 140,30 160,36 180,26 200,32 220,22 240,28 260,18 280,14 300,20 300,80"/>
-              <polyline fill="none" stroke="#C8A951" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                points="0,62 20,55 40,60 60,48 80,52 100,40 120,44 140,30 160,36 180,26 200,32 220,22 240,28 260,18 280,14 300,20"/>
+              <polygon id="usage-calls-area" fill="url(#grad-calls)" points="0,80 0,80 300,80"/>
+              <polyline id="usage-calls-line" fill="none" stroke="#C8A951" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="0,80 300,80"/>
             </svg>
-            <div class="usage-chart-axis">
-              <span>Mar 9</span><span>Mar 15</span><span>Mar 22</span><span>Mar 30</span>
+            <div class="usage-chart-axis" id="usage-calls-axis">
+              <span>—</span><span>—</span><span>—</span><span>—</span>
             </div>
           </div>
 
@@ -409,54 +416,52 @@
                 <p class="usage-chart-title">Billed Duration</p>
                 <p class="usage-chart-sub">Minutes per day</p>
               </div>
-              <p class="usage-chart-big">498m</p>
+              <p class="usage-chart-big" id="usage-chart-min-big">—</p>
             </div>
-            <svg class="usage-chart-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
+            <svg class="usage-chart-svg" id="usage-chart-min-svg" viewBox="0 0 300 80" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="grad-billed" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#0A1628" stop-opacity="0.18"/>
-                  <stop offset="100%" stop-color="#0A1628" stop-opacity="0"/>
+                  <stop offset="0%" stop-color="#C8A951" stop-opacity="0.18"/>
+                  <stop offset="100%" stop-color="#C8A951" stop-opacity="0"/>
                 </linearGradient>
               </defs>
-              <polygon fill="url(#grad-billed)" points="0,80 0,64 20,58 40,62 60,50 80,54 100,42 120,46 140,34 160,38 180,28 200,34 220,24 240,30 260,20 280,16 300,22 300,80"/>
-              <polyline fill="none" stroke="#0A1628" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                points="0,64 20,58 40,62 60,50 80,54 100,42 120,46 140,34 160,38 180,28 200,34 220,24 240,30 260,20 280,16 300,22"/>
+              <polygon id="usage-min-area" fill="url(#grad-billed)" points="0,80 0,80 300,80"/>
+              <polyline id="usage-min-line" fill="none" stroke="#C8A951" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="0,80 300,80"/>
             </svg>
-            <div class="usage-chart-axis">
-              <span>Mar 9</span><span>Mar 15</span><span>Mar 22</span><span>Mar 30</span>
+            <div class="usage-chart-axis" id="usage-min-axis">
+              <span>—</span><span>—</span><span>—</span><span>—</span>
             </div>
           </div>
-
         </div>
 
-        <!-- ── Minutes Counter ─────────────────────────────────────── -->
+        <!-- ── Summary Card ────────────────────────────────────────── -->
         <div class="usage-minutes-card">
           <div class="usage-minutes-body">
             <div>
-              <p class="usage-minutes-big">8 hrs 18 min</p>
-              <p class="usage-minutes-label">Billed Duration — Last 30 Days</p>
+              <p class="usage-minutes-big" id="usage-summary-hrs">— hrs — min</p>
+              <p class="usage-minutes-label" id="usage-summary-label">Billed Duration — this month</p>
             </div>
             <div class="usage-minutes-breakdown">
               <div class="usage-minutes-item">
-                <span class="usage-minutes-num">247</span>
+                <span class="usage-minutes-num" id="usage-sum-calls">—</span>
                 <span class="usage-minutes-desc">Total calls</span>
               </div>
               <div class="usage-minutes-divider"></div>
               <div class="usage-minutes-item">
-                <span class="usage-minutes-num">498m</span>
+                <span class="usage-minutes-num" id="usage-sum-min">—</span>
                 <span class="usage-minutes-desc">Total minutes</span>
               </div>
               <div class="usage-minutes-divider"></div>
               <div class="usage-minutes-item">
-                <span class="usage-minutes-num">2.0m</span>
+                <span class="usage-minutes-num" id="usage-sum-avg">—</span>
                 <span class="usage-minutes-desc">Avg per call</span>
               </div>
             </div>
           </div>
           <div class="usage-minutes-bar-wrap">
-            <div class="usage-minutes-bar-fill" style="width: 69%"></div>
+            <div class="usage-minutes-bar-fill" id="usage-days-bar" style="width: 0%"></div>
           </div>
-          <p class="usage-minutes-caption">69% of monthly estimate used</p>
+          <p class="usage-minutes-caption" id="usage-days-caption">Loading…</p>
         </div>
 
       </div>
