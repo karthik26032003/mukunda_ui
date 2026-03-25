@@ -1162,6 +1162,7 @@ input  { font-family: inherit; }
   color: var(--text-muted);
   font-size: 13px;
 }
+.usage-loading.hidden { display: none; }
 
 /* Stat cards — 4-col grid */
 .usage-stats-grid {
