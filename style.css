@@ -1024,6 +1024,25 @@ input  { font-family: inherit; }
 .btn-play-recording.loading  { opacity: 0.55; cursor: wait; }
 .btn-play-recording.playing  { background: var(--gold-dk); color: var(--navy); }
 
+.btn-download-recording {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-download-recording:hover { background: var(--gold); color: var(--navy); }
+
 /* Recording audio player strip */
 .recording-player {
   padding: 10px 20px;

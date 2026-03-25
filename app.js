@@ -393,10 +393,11 @@ const drawerLoading      = document.getElementById('drawer-loading');
 const drawerEmpty        = document.getElementById('drawer-empty');
 const drawerMessages     = document.getElementById('drawer-messages');
 const drawerClose        = document.getElementById('drawer-close');
-const btnPlayRecording   = document.getElementById('btn-play-recording');
-const recordingPlayer    = document.getElementById('recording-player');
-const recordingAudio     = document.getElementById('recording-audio');
-const recordingError     = document.getElementById('recording-error');
+const btnPlayRecording      = document.getElementById('btn-play-recording');
+const btnDownloadRecording  = document.getElementById('btn-download-recording');
+const recordingPlayer       = document.getElementById('recording-player');
+const recordingAudio        = document.getElementById('recording-audio');
+const recordingError        = document.getElementById('recording-error');
 
 let currentTranscriptCallId = null;  // call ID currently shown in the modal
 
@@ -691,6 +692,11 @@ async function openTranscript(callId) {
   drawerMessages.innerHTML = '';
   _resetRecordingPlayer();
 
+  // Wire up download button
+  btnDownloadRecording.href = `${BACKEND_URL}/logs/calls/${encodeURIComponent(callId)}/recording?download=1`;
+  btnDownloadRecording.setAttribute('download', '');
+  btnDownloadRecording.classList.remove('hidden');
+
   try {
     const res = await fetch(`${BACKEND_URL}/logs/calls/${encodeURIComponent(callId)}/messages`);
     if (!res.ok) {
@@ -727,6 +733,8 @@ function closeTranscript() {
   drawerCallId.textContent = '';
   currentTranscriptCallId = null;
   _resetRecordingPlayer();
+  btnDownloadRecording.classList.add('hidden');
+  btnDownloadRecording.removeAttribute('href');
 }
 
 // ── Play Recording ────────────────────────────────────────────────────────────
