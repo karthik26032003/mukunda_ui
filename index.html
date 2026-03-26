@@ -6,7 +6,7 @@
   <title>Mukunda Jewellers — Voice Agent</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=2" />
 </head>
 <body>
   <!-- ── Mobile top bar ──────────────────────────────────────────────────── -->
@@ -158,36 +158,57 @@
           </div>
         </div>
 
-        <!-- ── Outbound Tab (Batches) ────────────────────────────────── -->
+        <!-- ── Outbound Tab ──────────────────────────────────────────── -->
         <div class="tab-panel active" id="tab-outbound">
-          <!-- Header -->
-          <div class="batches-header">
-            <p class="batches-subtitle">Manage outbound calling campaigns</p>
-            <div class="batches-header-actions">
-              <button id="btn-download-template" class="btn-icon-outline">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+          <div class="outbound-card">
+
+            <!-- Excel upload -->
+            <div class="section-block">
+              <div class="section-label-row">
+                <label class="section-label">Upload Contact List</label>
+                <button id="btn-download-template" class="btn-template">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Download Template
+                </button>
+              </div>
+              <div class="upload-zone" id="upload-zone">
+                <input type="file" id="excel-input" accept=".xlsx,.xls,.csv" hidden />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="34" height="34" class="upload-icon">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                Template
-              </button>
-              <button id="btn-new-batch" class="btn-gold-sm">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Upload Batch
-              </button>
+                <p class="upload-text">Drop an Excel file here or <label for="excel-input" class="upload-link">browse</label></p>
+                <p class="upload-hint">Reads the <code>phone_numbers</code> column &nbsp;·&nbsp; .xlsx / .xls / .csv</p>
+              </div>
+              <div class="upload-status hidden" id="upload-status"></div>
             </div>
-          </div>
 
-          <!-- Loading / empty states -->
-          <div class="batches-loading hidden" id="batches-loading">Loading batches…</div>
-          <div class="batches-empty hidden" id="batches-empty">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="40" height="40"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-            <p>No batches yet. Click <strong>Upload Batch</strong> to get started.</p>
-          </div>
+            <div class="or-divider"><span>or add manually</span></div>
 
-          <!-- Batch cards grid -->
-          <div class="batches-grid" id="batches-grid"></div>
+            <!-- Manual input -->
+            <div class="section-block">
+              <label class="section-label" for="phone-input">Phone Number</label>
+              <div class="input-row">
+                <input type="tel" id="phone-input" placeholder="98765 43210" autocomplete="tel" />
+                <button id="btn-add-number" class="btn-add" disabled>Add</button>
+              </div>
+              <span class="field-hint">Indian numbers only · +91 is added automatically</span>
+            </div>
+
+            <!-- Phone tags -->
+            <div id="phone-list" class="phone-tags hidden"></div>
+
+            <!-- Errors & Results -->
+            <div id="outbound-error" class="outbound-error hidden"></div>
+            <div id="call-results" class="call-results hidden"></div>
+
+            <button id="btn-call" class="btn-gold-full" disabled>Initiate Calls</button>
+          </div>
         </div>
       </div>
 
@@ -511,84 +532,6 @@
       </div>
       <div class="drawer-empty hidden" id="drawer-empty">No transcript available for this call.</div>
       <div class="drawer-messages" id="drawer-messages"></div>
-    </div>
-  </div>
-
-  <!-- ── Upload Batch Modal ───────────────────────────────────────────────── -->
-  <div class="modal-overlay hidden" id="batch-upload-overlay">
-    <div class="batch-modal">
-      <div class="batch-modal-header">
-        <h3 class="batch-modal-title">Upload Batch</h3>
-        <button class="modal-close" id="btn-batch-modal-close" title="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="batch-modal-body">
-        <!-- Batch name -->
-        <div class="section-block">
-          <label class="section-label" for="batch-name-input">Batch Name</label>
-          <input type="text" id="batch-name-input" class="batch-name-input" placeholder="Batch 1" />
-        </div>
-
-        <!-- Excel upload -->
-        <div class="section-block">
-          <label class="section-label">Upload Contact List</label>
-          <div class="upload-zone" id="batch-upload-zone">
-            <input type="file" id="batch-excel-input" accept=".xlsx,.xls,.csv" hidden />
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="34" height="34" class="upload-icon">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/>
-              <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            <p class="upload-text">Drop an Excel file here or <label for="batch-excel-input" class="upload-link">browse</label></p>
-            <p class="upload-hint">Reads the <code>phone_numbers</code> column &nbsp;·&nbsp; .xlsx / .xls / .csv</p>
-          </div>
-          <div class="upload-status hidden" id="batch-upload-status"></div>
-        </div>
-
-        <div class="or-divider"><span>or add manually</span></div>
-
-        <!-- Manual input -->
-        <div class="section-block">
-          <label class="section-label" for="batch-phone-input">Phone Number</label>
-          <div class="input-row">
-            <input type="tel" id="batch-phone-input" placeholder="98765 43210" autocomplete="tel" />
-            <button id="btn-batch-add" class="btn-add" disabled>Add</button>
-          </div>
-          <span class="field-hint">Indian numbers only · +91 is added automatically</span>
-        </div>
-
-        <div id="batch-phone-list" class="phone-tags hidden"></div>
-        <div id="batch-error" class="outbound-error hidden"></div>
-        <button id="btn-batch-submit" class="btn-gold-full" disabled>Start Batch</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Batch Detail Modal ─────────────────────────────────────────────────── -->
-  <div class="modal-overlay hidden" id="batch-detail-overlay">
-    <div class="batch-detail-modal">
-      <div class="batch-detail-header">
-        <div>
-          <h3 class="batch-detail-title" id="batch-detail-name">Batch Details</h3>
-          <p class="batch-detail-stats" id="batch-detail-stats"></p>
-        </div>
-        <button class="modal-close" id="btn-batch-detail-close" title="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-      </div>
-      <div class="batch-detail-table-wrap">
-        <table class="batch-detail-table">
-          <thead>
-            <tr>
-              <th style="width:50px">#</th>
-              <th>Phone Number</th>
-              <th style="width:130px">Status</th>
-            </tr>
-          </thead>
-          <tbody id="batch-detail-tbody"></tbody>
-        </table>
-      </div>
     </div>
   </div>
 
