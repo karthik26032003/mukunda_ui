@@ -3,8 +3,7 @@ import { UltravoxSession } from './ultravox-client.js';
 const BACKEND_URL = window.BACKEND_URL || 'http://localhost:8000';
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let session      = null;
-let phoneNumbers = [];
+let session = null;
 
 
 // ── DOM — Voice ───────────────────────────────────────────────────────────────
@@ -16,17 +15,32 @@ const statusLabel   = document.getElementById('status-label');
 const transcriptBox = document.getElementById('transcript-box');
 const errorBanner   = document.getElementById('error-banner');
 
-// ── DOM — Outbound ────────────────────────────────────────────────────────────
-const phoneInput    = document.getElementById('phone-input');
-const btnAddNumber  = document.getElementById('btn-add-number');
-const phoneList     = document.getElementById('phone-list');
-const btnCall       = document.getElementById('btn-call');
-const outboundError = document.getElementById('outbound-error');
-const callResults   = document.getElementById('call-results');
-const excelInput    = document.getElementById('excel-input');
-const uploadZone    = document.getElementById('upload-zone');
-const uploadStatus  = document.getElementById('upload-status');
+// ── DOM — Batches ─────────────────────────────────────────────────────────────
 const btnDownloadTemplate = document.getElementById('btn-download-template');
+const btnNewBatch         = document.getElementById('btn-new-batch');
+const batchesGrid         = document.getElementById('batches-grid');
+const batchesEmpty        = document.getElementById('batches-empty');
+const batchesLoading      = document.getElementById('batches-loading');
+
+// Upload modal
+const batchUploadOverlay  = document.getElementById('batch-upload-overlay');
+const batchNameInput      = document.getElementById('batch-name-input');
+const batchExcelInput     = document.getElementById('batch-excel-input');
+const batchUploadZone     = document.getElementById('batch-upload-zone');
+const batchUploadStatus   = document.getElementById('batch-upload-status');
+const batchPhoneInput     = document.getElementById('batch-phone-input');
+const btnBatchAdd         = document.getElementById('btn-batch-add');
+const batchPhoneList      = document.getElementById('batch-phone-list');
+const batchError          = document.getElementById('batch-error');
+const btnBatchSubmit      = document.getElementById('btn-batch-submit');
+const btnBatchModalClose  = document.getElementById('btn-batch-modal-close');
+
+// Detail modal
+const batchDetailOverlay  = document.getElementById('batch-detail-overlay');
+const batchDetailName     = document.getElementById('batch-detail-name');
+const batchDetailStats    = document.getElementById('batch-detail-stats');
+const batchDetailTbody    = document.getElementById('batch-detail-tbody');
+const btnBatchDetailClose = document.getElementById('btn-batch-detail-close');
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  MOBILE SIDEBAR TOGGLE
@@ -223,154 +237,314 @@ async function parseExcelFile(file) {
   return numbers;
 }
 
-async function handleExcelFile(file) {
-  clearOutboundError();
-  uploadStatus.classList.add('hidden');
-  try {
-    const numbers = await parseExcelFile(file);
-    if (numbers.length === 0) {
-      showOutboundError('No valid numbers found. Ensure the column is named "phone_numbers" with E.164 format (+91...).');
-      return;
-    }
-    let added = 0;
-    for (const n of numbers) {
-      if (!phoneNumbers.includes(n)) { phoneNumbers.push(n); added++; }
-    }
-    uploadStatus.textContent = `${added} number${added !== 1 ? 's' : ''} loaded from "${file.name}"`;
-    uploadStatus.classList.remove('hidden');
-    renderPhoneList();
-  } catch (err) {
-    showOutboundError(`Failed to read file: ${err.message}`);
-  }
-}
-
 // Download template CSV
 btnDownloadTemplate.addEventListener('click', () => {
   const csv = 'phone_numbers,Names\n';
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = 'contacts_template.csv';
-  a.click();
+  a.href = url; a.download = 'contacts_template.csv'; a.click();
   URL.revokeObjectURL(url);
 });
 
-// Click on zone (but not on the label — label opens file dialog natively)
-uploadZone.addEventListener('click', e => {
-  if (e.target.tagName !== 'LABEL') excelInput.click();
-});
-
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', async e => {
-  e.preventDefault();
-  uploadZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file) await handleExcelFile(file);
-});
-
-excelInput.addEventListener('change', async () => {
-  const file = excelInput.files[0];
-  if (file) await handleExcelFile(file);
-  excelInput.value = '';
-});
+// ── Batch error helpers ───────────────────────────────────────────────────────
+function showBatchError(msg) { batchError.textContent = msg; batchError.classList.remove('hidden'); }
+function clearBatchError()   { batchError.textContent = ''; batchError.classList.add('hidden'); }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  MANUAL NUMBER ENTRY
+//  BATCH MANAGEMENT
 // ═════════════════════════════════════════════════════════════════════════════
 
-phoneInput.addEventListener('input', () => {
-  const val = phoneInput.value.trim().replace(/[\s\-]/g, '');
-  btnAddNumber.disabled = !PHONE_RE.test(val);
-  clearOutboundError();
-});
-phoneInput.addEventListener('keydown', e => { if (e.key === 'Enter') addNumber(); });
-btnAddNumber.addEventListener('click', addNumber);
+let batchPhoneNumbers = [];
 
-function addNumber() {
-  const val = phoneInput.value.trim().replace(/[\s\-]/g, '');
-  if (!PHONE_RE.test(val)) { showOutboundError('Enter a valid 10-digit number, e.g. 9876543210'); return; }
-  if (phoneNumbers.includes(val)) { showOutboundError(`${val} is already in the list.`); return; }
-  clearOutboundError();
-  phoneNumbers.push(val);
-  phoneInput.value = '';
-  btnAddNumber.disabled = true;
-  renderPhoneList();
+// ── Status badge helper ───────────────────────────────────────────────────────
+function _batchStatusBadge(status) {
+  const map = {
+    running:   'badge-running',
+    completed: 'badge-completed',
+    failed:    'badge-error',
+    queued:    'badge-queued-call',
+    initiated: 'badge-initiated',
+    joined:    'badge-completed',
+    ended:     'badge-completed',
+  };
+  const cls = map[status] || 'badge-other';
+  return `<span class="batch-status-badge ${cls}">${status}</span>`;
 }
 
-function removeNumber(num) {
-  phoneNumbers = phoneNumbers.filter(n => n !== num);
-  renderPhoneList();
+// ── Render batch cards ────────────────────────────────────────────────────────
+function _renderBatchCard(batch) {
+  const done    = batch.succeeded + batch.failed;
+  const pct     = batch.total > 0 ? Math.round((done / batch.total) * 100) : 0;
+  const displayName = batch.name || batch.batch_id.slice(0, 8) + '…';
+  const isRunning   = batch.status === 'running';
+
+  const card = document.createElement('div');
+  card.className = 'batch-card';
+  card.dataset.batchId = batch.batch_id;
+  card.innerHTML = `
+    <div class="batch-card-top">
+      <div class="batch-card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <div class="batch-card-info">
+        <p class="batch-card-name">${displayName}</p>
+        <p class="batch-card-id">Batch ID: ${batch.batch_id}</p>
+      </div>
+      ${_batchStatusBadge(batch.status)}
+    </div>
+    <div class="batch-card-progress">
+      <div class="batch-progress-row">
+        <span class="batch-progress-label">Contacts</span>
+        <span class="batch-progress-count">${done} / ${batch.total}</span>
+      </div>
+      <div class="batch-progress-track"><div class="batch-progress-fill" style="width:${pct}%"></div></div>
+      <p class="batch-progress-pct">${pct}% complete</p>
+    </div>
+    <div class="batch-card-actions">
+      ${isRunning
+        ? `<button class="btn-batch-stop" data-batch-id="${batch.batch_id}">⏹ Stop</button>`
+        : `<button class="btn-batch-run hidden" data-batch-id="${batch.batch_id}">▶ Run</button>`
+      }
+      <button class="btn-batch-delete ${isRunning ? 'disabled' : ''}" data-batch-id="${batch.batch_id}" ${isRunning ? 'disabled title="Cannot delete a running batch"' : ''}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </button>
+    </div>
+  `;
+
+  // Click card body → open detail
+  card.addEventListener('click', e => {
+    if (e.target.closest('.batch-card-actions')) return;
+    openBatchDetail(batch.batch_id, displayName, batch);
+  });
+
+  // Delete
+  card.querySelector('.btn-batch-delete')?.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!isRunning) deleteBatch(batch.batch_id);
+  });
+
+  return card;
 }
 
-function renderPhoneList() {
-  if (phoneNumbers.length === 0) {
-    phoneList.classList.add('hidden');
-    phoneList.innerHTML = '';
-    btnCall.disabled = true;
+// ── Load & render batches ─────────────────────────────────────────────────────
+async function loadBatches() {
+  batchesLoading.classList.remove('hidden');
+  batchesEmpty.classList.add('hidden');
+  batchesGrid.innerHTML = '';
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/outbound/batches`);
+    if (!res.ok) throw new Error(`Server ${res.status}`);
+    const batches = await res.json();
+
+    batchesLoading.classList.add('hidden');
+    if (batches.length === 0) {
+      batchesEmpty.classList.remove('hidden');
+      return;
+    }
+    for (const b of batches) batchesGrid.appendChild(_renderBatchCard(b));
+  } catch (err) {
+    batchesLoading.classList.add('hidden');
+    batchesEmpty.classList.remove('hidden');
+    batchesEmpty.querySelector('p').textContent = `Failed to load batches: ${err.message}`;
+  }
+}
+
+// ── Delete batch ──────────────────────────────────────────────────────────────
+async function deleteBatch(batchId) {
+  if (!confirm('Delete this batch and all its call records?')) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/outbound/batch/${encodeURIComponent(batchId)}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      alert(err.detail || 'Delete failed');
+      return;
+    }
+    loadBatches();
+  } catch (err) {
+    alert(`Delete failed: ${err.message}`);
+  }
+}
+
+// ── Upload Batch Modal ────────────────────────────────────────────────────────
+function openBatchModal() {
+  // Auto-name: count existing cards + 1
+  const count = batchesGrid.querySelectorAll('.batch-card').length + 1;
+  batchNameInput.value = `Batch ${count}`;
+  batchPhoneNumbers = [];
+  batchPhoneList.innerHTML = '';
+  batchPhoneList.classList.add('hidden');
+  batchUploadStatus.classList.add('hidden');
+  batchUploadStatus.textContent = '';
+  batchExcelInput.value = '';
+  batchPhoneInput.value = '';
+  btnBatchAdd.disabled  = true;
+  btnBatchSubmit.disabled = true;
+  clearBatchError();
+  batchUploadOverlay.classList.remove('hidden');
+}
+
+function closeBatchModal() {
+  batchUploadOverlay.classList.add('hidden');
+}
+
+function _renderBatchPhoneList() {
+  if (batchPhoneNumbers.length === 0) {
+    batchPhoneList.classList.add('hidden');
+    batchPhoneList.innerHTML = '';
+    btnBatchSubmit.disabled = true;
     return;
   }
-  phoneList.classList.remove('hidden');
-  phoneList.innerHTML = '';
-  for (const num of phoneNumbers) {
+  batchPhoneList.classList.remove('hidden');
+  batchPhoneList.innerHTML = '';
+  for (const num of batchPhoneNumbers) {
     const tag       = document.createElement('div');    tag.className = 'phone-tag';
     const numSpan   = document.createElement('span');   numSpan.textContent = num;
-    const removeBtn = document.createElement('button'); removeBtn.className = 'phone-tag-remove'; removeBtn.textContent = '×'; removeBtn.title = `Remove ${num}`;
-    removeBtn.addEventListener('click', () => removeNumber(num));
+    const removeBtn = document.createElement('button'); removeBtn.className = 'phone-tag-remove'; removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      batchPhoneNumbers = batchPhoneNumbers.filter(n => n !== num);
+      _renderBatchPhoneList();
+    });
     tag.appendChild(numSpan);
     tag.appendChild(removeBtn);
-    phoneList.appendChild(tag);
+    batchPhoneList.appendChild(tag);
   }
-  btnCall.disabled = false;
+  btnBatchSubmit.disabled = false;
 }
 
-// ── Outbound error helpers ────────────────────────────────────────────────────
-function showOutboundError(msg) { outboundError.textContent = msg; outboundError.classList.remove('hidden'); }
-function clearOutboundError()   { outboundError.textContent = ''; outboundError.classList.add('hidden'); }
+batchPhoneInput.addEventListener('input', () => {
+  const val = batchPhoneInput.value.trim().replace(/[\s\-]/g, '');
+  btnBatchAdd.disabled = !PHONE_RE.test(val);
+  clearBatchError();
+});
+batchPhoneInput.addEventListener('keydown', e => { if (e.key === 'Enter') _addBatchNumber(); });
+btnBatchAdd.addEventListener('click', _addBatchNumber);
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  BATCH OUTBOUND CALL
-// ═════════════════════════════════════════════════════════════════════════════
+function _addBatchNumber() {
+  const val = batchPhoneInput.value.trim().replace(/[\s\-]/g, '');
+  if (!PHONE_RE.test(val)) { showBatchError('Enter a valid 10-digit number'); return; }
+  if (batchPhoneNumbers.includes(val)) { showBatchError(`${val} is already in the list.`); return; }
+  clearBatchError();
+  batchPhoneNumbers.push(val);
+  batchPhoneInput.value = '';
+  btnBatchAdd.disabled = true;
+  _renderBatchPhoneList();
+}
 
-async function initiateOutboundCall() {
-  if (phoneNumbers.length === 0) return;
-  clearOutboundError();
-  btnCall.disabled = true;
-  btnCall.textContent = 'Calling…';
-  callResults.classList.add('hidden');
-  callResults.innerHTML = '';
+// Excel upload in modal
+batchUploadZone.addEventListener('click', e => { if (e.target.tagName !== 'LABEL') batchExcelInput.click(); });
+batchUploadZone.addEventListener('dragover',  e => { e.preventDefault(); batchUploadZone.classList.add('drag-over'); });
+batchUploadZone.addEventListener('dragleave', () => batchUploadZone.classList.remove('drag-over'));
+batchUploadZone.addEventListener('drop', async e => {
+  e.preventDefault();
+  batchUploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) await _handleBatchExcel(file);
+});
+batchExcelInput.addEventListener('change', async () => {
+  const file = batchExcelInput.files[0];
+  if (file) await _handleBatchExcel(file);
+  batchExcelInput.value = '';
+});
+
+async function _handleBatchExcel(file) {
+  clearBatchError();
+  batchUploadStatus.classList.add('hidden');
+  try {
+    const numbers = await parseExcelFile(file);
+    if (numbers.length === 0) {
+      showBatchError('No valid numbers found. Ensure the column is named "phone_numbers".');
+      return;
+    }
+    let added = 0;
+    for (const n of numbers) {
+      if (!batchPhoneNumbers.includes(n)) { batchPhoneNumbers.push(n); added++; }
+    }
+    batchUploadStatus.textContent = `${added} number${added !== 1 ? 's' : ''} loaded from "${file.name}"`;
+    batchUploadStatus.classList.remove('hidden');
+    _renderBatchPhoneList();
+  } catch (err) {
+    showBatchError(`Failed to read file: ${err.message}`);
+  }
+}
+
+// Submit batch
+btnBatchSubmit.addEventListener('click', async () => {
+  if (batchPhoneNumbers.length === 0) return;
+  clearBatchError();
+  btnBatchSubmit.disabled = true;
+  btnBatchSubmit.textContent = 'Starting…';
 
   try {
     const res = await fetch(`${BACKEND_URL}/outbound/calls/batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_numbers: phoneNumbers }),
+      body: JSON.stringify({ phone_numbers: batchPhoneNumbers, name: batchNameInput.value.trim() || `Batch` }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
       throw new Error(err.detail || `Server returned ${res.status}`);
     }
-    const data = await res.json();
-    callResults.classList.remove('hidden');
-
-    // New batch queue response: {batch_id, total, started, queued, message}
-    const summary = document.createElement('div');
-    summary.className = 'call-result-item success';
-    summary.innerHTML =
-      `<span class="call-result-icon">✓</span>` +
-      `<span class="call-result-number">${data.message}</span>` +
-      `<span class="call-result-detail">Batch ID: ${data.batch_id}</span>`;
-    callResults.appendChild(summary);
-    btnCall.textContent = `${data.started} Active · ${data.queued} Queued`;
+    closeBatchModal();
+    loadBatches();
   } catch (err) {
-    showOutboundError(`Call failed: ${err.message}`);
-    btnCall.disabled = false;
-    btnCall.textContent = 'Initiate Calls';
+    showBatchError(`Failed: ${err.message}`);
+    btnBatchSubmit.disabled = false;
+    btnBatchSubmit.textContent = 'Start Batch';
+  }
+});
+
+btnNewBatch.addEventListener('click', openBatchModal);
+btnBatchModalClose.addEventListener('click', closeBatchModal);
+batchUploadOverlay.addEventListener('click', e => { if (e.target === batchUploadOverlay) closeBatchModal(); });
+
+// ── Batch Detail Modal ────────────────────────────────────────────────────────
+async function openBatchDetail(batchId, displayName, batch) {
+  batchDetailName.textContent = displayName;
+  batchDetailStats.textContent = `${batch.succeeded + batch.failed} completed / ${batch.total} total · status: ${batch.status}`;
+  batchDetailTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">Loading…</td></tr>';
+  batchDetailOverlay.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/outbound/batch/${encodeURIComponent(batchId)}/calls`);
+    if (!res.ok) throw new Error(`Server ${res.status}`);
+    const calls = await res.json();
+
+    batchDetailTbody.innerHTML = '';
+    if (calls.length === 0) {
+      batchDetailTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">No calls found</td></tr>';
+      return;
+    }
+    calls.forEach((c, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:var(--text-muted)">${i + 1}</td>
+        <td>${c.phone_number}</td>
+        <td>${_batchStatusBadge(c.status)}</td>
+      `;
+      batchDetailTbody.appendChild(tr);
+    });
+  } catch (err) {
+    batchDetailTbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--text-muted)">Error: ${err.message}</td></tr>`;
   }
 }
 
-btnCall.addEventListener('click', initiateOutboundCall);
+btnBatchDetailClose.addEventListener('click', () => batchDetailOverlay.classList.add('hidden'));
+batchDetailOverlay.addEventListener('click', e => { if (e.target === batchDetailOverlay) batchDetailOverlay.classList.add('hidden'); });
+
+// Load batches when Calls page / Outbound tab is activated
+document.querySelectorAll('.nav-item').forEach(item => {
+  if (item.dataset.page === 'calls') item.addEventListener('click', loadBatches);
+});
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  if (btn.dataset.tab === 'outbound') btn.addEventListener('click', loadBatches);
+});
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  LOGS
