@@ -1661,6 +1661,7 @@ body.dark ::-webkit-scrollbar-thumb { background: rgba(200, 169, 81, 0.22); }
   display: flex; flex-direction: column; align-items: center;
   gap: 12px; padding: 60px 20px; color: var(--text-muted); text-align: center;
 }
+.batches-loading.hidden { display: none; }
 .batches-empty.hidden { display: none; }
 .batches-empty p { margin: 0; font-size: 14px; }
 

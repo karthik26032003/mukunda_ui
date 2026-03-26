@@ -546,6 +546,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   if (btn.dataset.tab === 'outbound') btn.addEventListener('click', loadBatches);
 });
 
+// Auto-load on page start (Calls is the default active page)
+loadBatches();
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  LOGS
 // ═════════════════════════════════════════════════════════════════════════════
