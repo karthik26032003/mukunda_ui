@@ -3,8 +3,9 @@ import { UltravoxSession } from './ultravox-client.js';
 const BACKEND_URL = window.BACKEND_URL || 'http://localhost:8000';
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let session      = null;
-let phoneNumbers = [];
+let session        = null;
+let excelContacts  = [];   // [{phone_number, name}] from Excel upload
+let manualContacts = [];   // [{phone_number, name}] from manual entry
 
 
 // ── DOM — Voice ───────────────────────────────────────────────────────────────
@@ -16,36 +17,35 @@ const statusLabel   = document.getElementById('status-label');
 const transcriptBox = document.getElementById('transcript-box');
 const errorBanner   = document.getElementById('error-banner');
 
-// ── DOM — Outbound ────────────────────────────────────────────────────────────
-const phoneInput    = document.getElementById('phone-input');
-const btnAddNumber  = document.getElementById('btn-add-number');
-const phoneList     = document.getElementById('phone-list');
-const btnCall       = document.getElementById('btn-call');
-const outboundError = document.getElementById('outbound-error');
-const callResults   = document.getElementById('call-results');
-const excelInput    = document.getElementById('excel-input');
-const uploadZone    = document.getElementById('upload-zone');
-const uploadStatus  = document.getElementById('upload-status');
+// ── DOM — Excel Upload Tab ────────────────────────────────────────────────────
+const excelInput          = document.getElementById('excel-input');
+const uploadZone          = document.getElementById('upload-zone');
+const uploadStatus        = document.getElementById('upload-status');
 const btnDownloadTemplate = document.getElementById('btn-download-template');
+const excelContactList    = document.getElementById('excel-contact-list');
+const excelError          = document.getElementById('excel-error');
+const excelResults        = document.getElementById('excel-results');
+const btnExcelCall        = document.getElementById('btn-excel-call');
+
+// ── DOM — Manual Tab ──────────────────────────────────────────────────────────
+const manualNameInput    = document.getElementById('manual-name-input');
+const manualPhoneInput   = document.getElementById('manual-phone-input');
+const btnManualAdd       = document.getElementById('btn-manual-add');
+const manualContactList  = document.getElementById('manual-contact-list');
+const manualError        = document.getElementById('manual-error');
+const manualResults      = document.getElementById('manual-results');
+const btnManualCall      = document.getElementById('btn-manual-call');
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  MOBILE SIDEBAR TOGGLE
 // ═════════════════════════════════════════════════════════════════════════════
 
-const sidebar         = document.getElementById('sidebar');
-const sidebarOverlay  = document.getElementById('sidebar-overlay');
-const hamburger       = document.getElementById('hamburger');
+const sidebar        = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+const hamburger      = document.getElementById('hamburger');
 
-function openSidebar() {
-  sidebar.classList.add('open');
-  sidebarOverlay.classList.add('active');
-  hamburger.classList.add('open');
-}
-function closeSidebar() {
-  sidebar.classList.remove('open');
-  sidebarOverlay.classList.remove('active');
-  hamburger.classList.remove('open');
-}
+function openSidebar()  { sidebar.classList.add('open'); sidebarOverlay.classList.add('active'); hamburger.classList.add('open'); }
+function closeSidebar() { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('active'); hamburger.classList.remove('open'); }
 
 hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
 sidebarOverlay.addEventListener('click', closeSidebar);
@@ -62,7 +62,6 @@ function applyTheme(dark) {
   themeLabel.textContent = dark ? 'Light Mode' : 'Dark Mode';
 }
 
-// Restore saved preference
 applyTheme(localStorage.getItem('theme') === 'dark');
 
 themeToggle.addEventListener('click', () => {
@@ -117,14 +116,8 @@ function setStatus(status) {
   btnMute.disabled  = !isLive;
 }
 
-function showError(msg) {
-  errorBanner.textContent = msg;
-  errorBanner.classList.remove('hidden');
-}
-function clearError() {
-  errorBanner.textContent = '';
-  errorBanner.classList.add('hidden');
-}
+function showError(msg) { errorBanner.textContent = msg; errorBanner.classList.remove('hidden'); }
+function clearError()   { errorBanner.textContent = ''; errorBanner.classList.add('hidden'); }
 
 function renderTranscripts(transcripts) {
   if (!transcripts?.length) {
@@ -137,7 +130,6 @@ function renderTranscripts(transcripts) {
       </div>`;
     return;
   }
-
   transcriptBox.innerHTML = '';
   for (const t of transcripts) {
     if (!t.text?.trim()) continue;
@@ -167,7 +159,6 @@ async function startCall() {
     }
     const { callId, joinUrl } = await res.json();
     console.log(`[UV] Call created — callId: ${callId}`);
-
     session = new UltravoxSession();
     session.addEventListener('status',      () => setStatus(normalizeStatus(session.status)));
     session.addEventListener('transcripts', () => renderTranscripts(session.transcripts));
@@ -200,12 +191,74 @@ btnEnd.addEventListener('click', endCall);
 btnMute.addEventListener('click', toggleMute);
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  EXCEL PARSING
+//  SHARED HELPERS
 // ═════════════════════════════════════════════════════════════════════════════
 
-// Accepts: 10-digit Indian (9876543210), 12-digit with country code (919876543210),
-// or full E.164 (+919876543210). Backend normalizes all to +91XXXXXXXXXX.
 const PHONE_RE = /^(\+91|91)?\d{10}$/;
+
+function normalizePhone(raw) {
+  return raw.trim().replace(/[\s\-]/g, '');
+}
+
+function renderContactTags(contacts, container, onRemove) {
+  if (contacts.length === 0) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+  container.classList.remove('hidden');
+  container.innerHTML = '';
+  for (const c of contacts) {
+    const tag       = document.createElement('div');    tag.className = 'phone-tag';
+    const label     = document.createElement('span');
+    label.textContent = c.name ? `${c.name} · ${c.phone_number}` : c.phone_number;
+    const removeBtn = document.createElement('button'); removeBtn.className = 'phone-tag-remove'; removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => onRemove(c));
+    tag.appendChild(label);
+    tag.appendChild(removeBtn);
+    container.appendChild(tag);
+  }
+}
+
+async function initiateCallsFor(contacts, resultsEl, errorEl, btn) {
+  if (contacts.length === 0) return;
+  errorEl.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Calling…';
+  resultsEl.classList.add('hidden');
+  resultsEl.innerHTML = '';
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/outbound/calls/batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `Server returned ${res.status}`);
+    }
+    const data = await res.json();
+    resultsEl.classList.remove('hidden');
+    const summary = document.createElement('div');
+    summary.className = 'call-result-item success';
+    summary.innerHTML =
+      `<span class="call-result-icon">✓</span>` +
+      `<span class="call-result-number">${data.message}</span>` +
+      `<span class="call-result-detail">Batch ID: ${data.batch_id}</span>`;
+    resultsEl.appendChild(summary);
+    btn.textContent = `${data.started} Active · ${data.queued} Queued`;
+  } catch (err) {
+    errorEl.textContent = `Call failed: ${err.message}`;
+    errorEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Initiate Calls';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  EXCEL UPLOAD TAB
+// ═════════════════════════════════════════════════════════════════════════════
 
 async function parseExcelFile(file) {
   const buffer   = await file.arrayBuffer();
@@ -213,54 +266,64 @@ async function parseExcelFile(file) {
   const sheet    = workbook.Sheets[workbook.SheetNames[0]];
   const rows     = window.XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
 
-  const numbers = [];
+  const contacts = [];
   for (const row of rows) {
-    const key = Object.keys(row).find(k => k.toLowerCase() === 'phone_numbers');
-    if (!key) continue;
-    const val = String(row[key]).trim().replace(/[\s\-]/g, '');
-    if (PHONE_RE.test(val)) numbers.push(val);
+    const phoneKey = Object.keys(row).find(k => k.toLowerCase().replace(/[_\s]/g, '') === 'phonenumber' || k.toLowerCase() === 'phone_numbers');
+    const nameKey  = Object.keys(row).find(k => k.toLowerCase() === 'name' || k.toLowerCase() === 'names');
+    if (!phoneKey) continue;
+    const rawPhone = String(row[phoneKey]).trim().replace(/[\s\-]/g, '');
+    if (!PHONE_RE.test(rawPhone)) continue;
+    const name = nameKey ? String(row[nameKey]).trim() : '';
+    contacts.push({ phone_number: rawPhone, name });
   }
-  return numbers;
+  return contacts;
 }
 
 async function handleExcelFile(file) {
-  clearOutboundError();
+  excelError.classList.add('hidden');
   uploadStatus.classList.add('hidden');
   try {
-    const numbers = await parseExcelFile(file);
-    if (numbers.length === 0) {
-      showOutboundError('No valid numbers found. Ensure the column is named "phone_numbers" with E.164 format (+91...).');
+    const parsed = await parseExcelFile(file);
+    if (parsed.length === 0) {
+      excelError.textContent = 'No valid contacts found. Ensure columns are named "name" and "phone_number".';
+      excelError.classList.remove('hidden');
       return;
     }
     let added = 0;
-    for (const n of numbers) {
-      if (!phoneNumbers.includes(n)) { phoneNumbers.push(n); added++; }
+    for (const c of parsed) {
+      if (!excelContacts.find(e => e.phone_number === c.phone_number)) {
+        excelContacts.push(c);
+        added++;
+      }
     }
-    uploadStatus.textContent = `${added} number${added !== 1 ? 's' : ''} loaded from "${file.name}"`;
+    uploadStatus.textContent = `${added} contact${added !== 1 ? 's' : ''} loaded from "${file.name}"`;
     uploadStatus.classList.remove('hidden');
-    renderPhoneList();
+    renderExcelContacts();
   } catch (err) {
-    showOutboundError(`Failed to read file: ${err.message}`);
+    excelError.textContent = `Failed to read file: ${err.message}`;
+    excelError.classList.remove('hidden');
   }
+}
+
+function renderExcelContacts() {
+  renderContactTags(excelContacts, excelContactList, c => {
+    excelContacts = excelContacts.filter(e => e.phone_number !== c.phone_number);
+    renderExcelContacts();
+    btnExcelCall.disabled = excelContacts.length === 0;
+  });
+  btnExcelCall.disabled = excelContacts.length === 0;
 }
 
 // Download template CSV
 btnDownloadTemplate.addEventListener('click', () => {
-  const csv = 'phone_numbers,Names\n';
+  const csv = 'name,phone_number\nRamesh Kumar,9876543210\n';
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'contacts_template.csv';
-  a.click();
+  const a = document.createElement('a'); a.href = url; a.download = 'contacts_template.csv'; a.click();
   URL.revokeObjectURL(url);
 });
 
-// Click on zone (but not on the label — label opens file dialog natively)
-uploadZone.addEventListener('click', e => {
-  if (e.target.tagName !== 'LABEL') excelInput.click();
-});
-
+uploadZone.addEventListener('click', e => { if (e.target.tagName !== 'LABEL') excelInput.click(); });
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
 uploadZone.addEventListener('drop', async e => {
@@ -269,108 +332,51 @@ uploadZone.addEventListener('drop', async e => {
   const file = e.dataTransfer.files[0];
   if (file) await handleExcelFile(file);
 });
-
 excelInput.addEventListener('change', async () => {
   const file = excelInput.files[0];
   if (file) await handleExcelFile(file);
   excelInput.value = '';
 });
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  MANUAL NUMBER ENTRY
-// ═════════════════════════════════════════════════════════════════════════════
-
-phoneInput.addEventListener('input', () => {
-  const val = phoneInput.value.trim().replace(/[\s\-]/g, '');
-  btnAddNumber.disabled = !PHONE_RE.test(val);
-  clearOutboundError();
-});
-phoneInput.addEventListener('keydown', e => { if (e.key === 'Enter') addNumber(); });
-btnAddNumber.addEventListener('click', addNumber);
-
-function addNumber() {
-  const val = phoneInput.value.trim().replace(/[\s\-]/g, '');
-  if (!PHONE_RE.test(val)) { showOutboundError('Enter a valid 10-digit number, e.g. 9876543210'); return; }
-  if (phoneNumbers.includes(val)) { showOutboundError(`${val} is already in the list.`); return; }
-  clearOutboundError();
-  phoneNumbers.push(val);
-  phoneInput.value = '';
-  btnAddNumber.disabled = true;
-  renderPhoneList();
-}
-
-function removeNumber(num) {
-  phoneNumbers = phoneNumbers.filter(n => n !== num);
-  renderPhoneList();
-}
-
-function renderPhoneList() {
-  if (phoneNumbers.length === 0) {
-    phoneList.classList.add('hidden');
-    phoneList.innerHTML = '';
-    btnCall.disabled = true;
-    return;
-  }
-  phoneList.classList.remove('hidden');
-  phoneList.innerHTML = '';
-  for (const num of phoneNumbers) {
-    const tag       = document.createElement('div');    tag.className = 'phone-tag';
-    const numSpan   = document.createElement('span');   numSpan.textContent = num;
-    const removeBtn = document.createElement('button'); removeBtn.className = 'phone-tag-remove'; removeBtn.textContent = '×'; removeBtn.title = `Remove ${num}`;
-    removeBtn.addEventListener('click', () => removeNumber(num));
-    tag.appendChild(numSpan);
-    tag.appendChild(removeBtn);
-    phoneList.appendChild(tag);
-  }
-  btnCall.disabled = false;
-}
-
-// ── Outbound error helpers ────────────────────────────────────────────────────
-function showOutboundError(msg) { outboundError.textContent = msg; outboundError.classList.remove('hidden'); }
-function clearOutboundError()   { outboundError.textContent = ''; outboundError.classList.add('hidden'); }
+btnExcelCall.addEventListener('click', () => initiateCallsFor(excelContacts, excelResults, excelError, btnExcelCall));
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  BATCH OUTBOUND CALL
+//  MANUAL TAB
 // ═════════════════════════════════════════════════════════════════════════════
 
-async function initiateOutboundCall() {
-  if (phoneNumbers.length === 0) return;
-  clearOutboundError();
-  btnCall.disabled = true;
-  btnCall.textContent = 'Calling…';
-  callResults.classList.add('hidden');
-  callResults.innerHTML = '';
-
-  try {
-    const res = await fetch(`${BACKEND_URL}/outbound/calls/batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_numbers: phoneNumbers }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || `Server returned ${res.status}`);
-    }
-    const data = await res.json();
-    callResults.classList.remove('hidden');
-
-    // New batch queue response: {batch_id, total, started, queued, message}
-    const summary = document.createElement('div');
-    summary.className = 'call-result-item success';
-    summary.innerHTML =
-      `<span class="call-result-icon">✓</span>` +
-      `<span class="call-result-number">${data.message}</span>` +
-      `<span class="call-result-detail">Batch ID: ${data.batch_id}</span>`;
-    callResults.appendChild(summary);
-    btnCall.textContent = `${data.started} Active · ${data.queued} Queued`;
-  } catch (err) {
-    showOutboundError(`Call failed: ${err.message}`);
-    btnCall.disabled = false;
-    btnCall.textContent = 'Initiate Calls';
-  }
+function validateManualForm() {
+  const phone = normalizePhone(manualPhoneInput.value);
+  btnManualAdd.disabled = !PHONE_RE.test(phone);
 }
 
-btnCall.addEventListener('click', initiateOutboundCall);
+manualPhoneInput.addEventListener('input', () => { validateManualForm(); manualError.classList.add('hidden'); });
+manualNameInput.addEventListener('input', validateManualForm);
+manualPhoneInput.addEventListener('keydown', e => { if (e.key === 'Enter') addManualContact(); });
+
+function addManualContact() {
+  const phone = normalizePhone(manualPhoneInput.value);
+  const name  = manualNameInput.value.trim();
+  if (!PHONE_RE.test(phone)) { manualError.textContent = 'Enter a valid 10-digit number.'; manualError.classList.remove('hidden'); return; }
+  if (manualContacts.find(c => c.phone_number === phone)) { manualError.textContent = `${phone} is already in the list.`; manualError.classList.remove('hidden'); return; }
+  manualError.classList.add('hidden');
+  manualContacts.push({ phone_number: phone, name });
+  manualPhoneInput.value = '';
+  manualNameInput.value  = '';
+  btnManualAdd.disabled  = true;
+  renderManualContacts();
+}
+
+function renderManualContacts() {
+  renderContactTags(manualContacts, manualContactList, c => {
+    manualContacts = manualContacts.filter(e => e.phone_number !== c.phone_number);
+    renderManualContacts();
+    btnManualCall.disabled = manualContacts.length === 0;
+  });
+  btnManualCall.disabled = manualContacts.length === 0;
+}
+
+btnManualAdd.addEventListener('click', addManualContact);
+btnManualCall.addEventListener('click', () => initiateCallsFor(manualContacts, manualResults, manualError, btnManualCall));
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  LOGS
@@ -387,58 +393,50 @@ const btnRefreshLogs = document.getElementById('btn-refresh-logs');
 const summaryPopup   = document.getElementById('summary-popup');
 
 // Transcript modal
-const drawerOverlay      = document.getElementById('drawer-overlay');
-const drawerCallId       = document.getElementById('drawer-callid');
-const drawerLoading      = document.getElementById('drawer-loading');
-const drawerEmpty        = document.getElementById('drawer-empty');
-const drawerMessages     = document.getElementById('drawer-messages');
-const drawerClose        = document.getElementById('drawer-close');
+const drawerOverlay         = document.getElementById('drawer-overlay');
+const drawerCallId          = document.getElementById('drawer-callid');
+const drawerLoading         = document.getElementById('drawer-loading');
+const drawerEmpty           = document.getElementById('drawer-empty');
+const drawerMessages        = document.getElementById('drawer-messages');
+const drawerClose           = document.getElementById('drawer-close');
 const btnPlayRecording      = document.getElementById('btn-play-recording');
 const btnDownloadRecording  = document.getElementById('btn-download-recording');
 const recordingPlayer       = document.getElementById('recording-player');
 const recordingAudio        = document.getElementById('recording-audio');
 const recordingError        = document.getElementById('recording-error');
 
-let currentTranscriptCallId = null;  // call ID currently shown in the modal
-
+let currentTranscriptCallId = null;
 let logsCursor  = null;
 let logsHasMore = false;
 let colResizeInit = false;
-let allCalls    = [];   // full loaded dataset for client-side filtering
+let allCalls    = [];
 
 // ── Column resize ─────────────────────────────────────────────────────────────
 function initColResize() {
   if (colResizeInit) return;
   colResizeInit = true;
-
-  // Percentage-based initial widths so View column is always proportionally placed
-  const defaults = { 'col-date': '16%', 'col-dur': '9%', 'col-medium': '9%', 'col-reason': '10%', 'col-summary': '50%', 'col-action': '6%' };
+  const defaults = { 'col-date': '14%', 'col-customer': '13%', 'col-dur': '8%', 'col-medium': '8%', 'col-reason': '10%', 'col-summary': '43%', 'col-action': '4%' };
   Object.entries(defaults).forEach(([id, w]) => {
     const col = document.getElementById(id);
     if (col) col.style.width = w;
   });
-
   const table = document.getElementById('logs-table');
   table.querySelectorAll('th').forEach((th, i, ths) => {
-    if (i === ths.length - 1) return; // no resizer on last (action) col
+    if (i === ths.length - 1) return;
     const resizer = document.createElement('div');
     resizer.className = 'col-resizer';
     th.style.position = 'relative';
     th.appendChild(resizer);
-
     resizer.addEventListener('mousedown', e => {
-      const startX   = e.clientX;
-      const startW   = th.offsetWidth;
+      const startX = e.clientX, startW = th.offsetWidth;
       resizer.classList.add('resizing');
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
-
       const onMove = e => {
         const newW = Math.max(60, startW + e.clientX - startX);
         th.style.width = newW + 'px';
-        // mirror onto the corresponding <col>
-        const colId = th.dataset.col;
-        if (colId) { const col = document.getElementById(colId); if (col) col.style.width = newW + 'px'; }
+        const col = document.getElementById(th.dataset.col);
+        if (col) col.style.width = newW + 'px';
       };
       const onUp = () => {
         resizer.classList.remove('resizing');
@@ -459,18 +457,13 @@ function showSummaryPopup(td, fullText) {
   summaryPopup.textContent = fullText;
   summaryPopup.classList.remove('hidden');
   const rect = td.getBoundingClientRect();
-  let top  = rect.bottom + 6;
-  let left = rect.left;
-  // keep within viewport
+  let top  = rect.bottom + 6, left = rect.left;
   if (left + 360 > window.innerWidth)  left = window.innerWidth - 370;
-  if (top + 160  > window.innerHeight) top  = rect.top - summaryPopup.offsetHeight - 6;
+  if (top  + 160 > window.innerHeight) top  = rect.top - summaryPopup.offsetHeight - 6;
   summaryPopup.style.top  = top  + 'px';
   summaryPopup.style.left = left + 'px';
 }
-
-function hideSummaryPopup() {
-  summaryPopup.classList.add('hidden');
-}
+function hideSummaryPopup() { summaryPopup.classList.add('hidden'); }
 
 document.addEventListener('click', e => {
   if (!summaryPopup.classList.contains('hidden') && !summaryPopup.contains(e.target) && !e.target.classList.contains('log-summary'))
@@ -490,7 +483,7 @@ function _formatDate(iso) {
 
 function _mediumBadge(medium) {
   if (!medium) return '<span class="badge badge-other">—</span>';
-  if (['plivo','twilio','telnyx','exotel'].includes(medium))
+  if (['plivo','twilio','telnyx','exotel','sip'].includes(medium))
     return `<span class="badge badge-phone">${medium}</span>`;
   if (medium === 'webRtc' || medium === 'webSocket')
     return `<span class="badge badge-web">Web</span>`;
@@ -518,8 +511,10 @@ function _escHtml(s) {
 function _renderRow(call) {
   const tr = document.createElement('tr');
   const summaryText = call.shortSummary || '';
+  const customerName = call.customer_name || '—';
   tr.innerHTML = `
     <td class="log-date">${_formatDate(call.created)}</td>
+    <td class="log-customer">${_escHtml(customerName)}</td>
     <td class="log-dur">${call.duration || '—'}</td>
     <td>${_mediumBadge(call.medium)}</td>
     <td>${_endReasonBadge(call.endReason)}</td>
@@ -530,11 +525,10 @@ function _renderRow(call) {
   if (summaryText) {
     summaryTd.addEventListener('click', e => {
       e.stopPropagation();
-      if (!summaryPopup.classList.contains('hidden') && summaryPopup.textContent === summaryText) {
+      if (!summaryPopup.classList.contains('hidden') && summaryPopup.textContent === summaryText)
         hideSummaryPopup();
-      } else {
+      else
         showSummaryPopup(summaryTd, summaryText);
-      }
     });
   }
   tr.querySelector('.btn-view').addEventListener('click', () => openTranscript(call.callId));
@@ -546,39 +540,35 @@ function _appendLogRows(results) {
 }
 
 // ── Filter state & logic ───────────────────────────────────────────────────────
-const btnFilterLogs    = document.getElementById('btn-filter-logs');
-const filterDropdown   = document.getElementById('filter-dropdown');
-const filterBadge      = document.getElementById('filter-badge');
-const filterDateFrom   = document.getElementById('filter-date-from');
-const filterDateTo     = document.getElementById('filter-date-to');
-const filterMediumSel  = document.getElementById('filter-medium-select');
-const btnFilterApply   = document.getElementById('btn-filter-apply');
-const btnFilterClear   = document.getElementById('btn-filter-clear');
-const btnExportExcel   = document.getElementById('btn-export-excel');
+const btnFilterLogs   = document.getElementById('btn-filter-logs');
+const filterDropdown  = document.getElementById('filter-dropdown');
+const filterBadge     = document.getElementById('filter-badge');
+const filterDateFrom  = document.getElementById('filter-date-from');
+const filterDateTo    = document.getElementById('filter-date-to');
+const filterMediumSel = document.getElementById('filter-medium-select');
+const btnFilterApply  = document.getElementById('btn-filter-apply');
+const btnFilterClear  = document.getElementById('btn-filter-clear');
+const btnExportExcel  = document.getElementById('btn-export-excel');
 
 let activeFilters = { dateFrom: '', dateTo: '', medium: '' };
 
 function _countActiveFilters() {
   return [activeFilters.dateFrom, activeFilters.dateTo, activeFilters.medium].filter(Boolean).length;
 }
-
 function _updateFilterBadge() {
   const n = _countActiveFilters();
   filterBadge.textContent = n;
   filterBadge.classList.toggle('hidden', n === 0);
   btnFilterLogs.classList.toggle('active', n > 0 || !filterDropdown.classList.contains('hidden'));
 }
-
 function _isFiltering() {
   return !!(activeFilters.dateFrom || activeFilters.dateTo || activeFilters.medium);
 }
 
-// Toggle filter panel
 btnFilterLogs.addEventListener('click', () => {
   filterDropdown.classList.toggle('hidden');
   btnFilterLogs.classList.toggle('active', !filterDropdown.classList.contains('hidden') || _countActiveFilters() > 0);
 });
-
 btnFilterApply.addEventListener('click', () => {
   activeFilters.dateFrom = filterDateFrom.value;
   activeFilters.dateTo   = filterDateTo.value;
@@ -586,7 +576,6 @@ btnFilterApply.addEventListener('click', () => {
   _updateFilterBadge();
   loadLogs(true);
 });
-
 btnFilterClear.addEventListener('click', () => {
   filterDateFrom.value  = '';
   filterDateTo.value    = '';
@@ -600,13 +589,14 @@ btnFilterClear.addEventListener('click', () => {
 // Export Excel
 btnExportExcel.addEventListener('click', () => {
   if (!allCalls.length) return;
-  const rows = [['Date', 'Duration', 'Medium', 'End Reason', 'Summary']];
+  const rows = [['Date', 'Customer', 'Duration', 'Medium', 'End Reason', 'Summary']];
   for (const c of allCalls) {
     rows.push([
       c.created ? new Date(c.created).toLocaleString('en-IN') : '',
-      c.duration || '',
-      c.medium   || '',
-      c.endReason || '',
+      c.customer_name || '',
+      c.duration    || '',
+      c.medium      || '',
+      c.endReason   || '',
       c.shortSummary || '',
     ]);
   }
@@ -620,22 +610,16 @@ btnExportExcel.addEventListener('click', () => {
 
 // ── Load logs ─────────────────────────────────────────────────────────────────
 async function loadLogs(reset = true) {
-  if (reset) {
-    logsCursor = null;
-    allCalls   = [];
-    logsTbody.innerHTML = '';
-    colResizeInit = false;
-  }
+  if (reset) { logsCursor = null; allCalls = []; logsTbody.innerHTML = ''; colResizeInit = false; }
   btnRefreshLogs.classList.add('spinning');
   _setLogsView('loading');
-
   try {
     const filtering = _isFiltering();
     const params = new URLSearchParams({ page_size: 20 });
-    if (!filtering && logsCursor) params.set('cursor', logsCursor);
-    if (activeFilters.dateFrom)       params.set('date_from', activeFilters.dateFrom);
-    if (activeFilters.dateTo)         params.set('date_to',   activeFilters.dateTo);
-    if (activeFilters.medium) params.set('medium', activeFilters.medium);
+    if (!filtering && logsCursor)    params.set('cursor',    logsCursor);
+    if (activeFilters.dateFrom)      params.set('date_from', activeFilters.dateFrom);
+    if (activeFilters.dateTo)        params.set('date_to',   activeFilters.dateTo);
+    if (activeFilters.medium)        params.set('medium',    activeFilters.medium);
 
     const res = await fetch(`${BACKEND_URL}/logs/calls?${params}`);
     if (!res.ok) {
@@ -650,25 +634,14 @@ async function loadLogs(reset = true) {
       _updateFilterBadge();
       return;
     }
-
-    if (filtering || reset) {
-      // Filtered results or fresh load: replace, don't accumulate
-      allCalls = data.results;
-    } else {
-      // "Load more" without filters: append
-      allCalls.push(...data.results);
-    }
+    if (filtering || reset) allCalls = data.results;
+    else allCalls.push(...data.results);
 
     _setLogsView('table');
-    if (reset || filtering) {
-      logsTbody.innerHTML = '';
-      _appendLogRows(allCalls);
-    } else {
-      _appendLogRows(data.results);
-    }
+    if (reset || filtering) { logsTbody.innerHTML = ''; _appendLogRows(allCalls); }
+    else _appendLogRows(data.results);
     initColResize();
 
-    // Hide "Load more" when filters are active (server already returned all matches)
     logsHasMore = !filtering && !!data.next;
     logsCursor  = data.next || null;
     logsPagination.classList.toggle('hidden', !logsHasMore);
@@ -700,12 +673,9 @@ async function openTranscript(callId) {
   drawerEmpty.classList.add('hidden');
   drawerMessages.innerHTML = '';
   _resetRecordingPlayer();
-
-  // Wire up download button
   btnDownloadRecording.href = `${BACKEND_URL}/logs/calls/${encodeURIComponent(callId)}/recording?download=1`;
   btnDownloadRecording.setAttribute('download', '');
   btnDownloadRecording.classList.remove('hidden');
-
   try {
     const res = await fetch(`${BACKEND_URL}/logs/calls/${encodeURIComponent(callId)}/messages`);
     if (!res.ok) {
@@ -714,12 +684,7 @@ async function openTranscript(callId) {
     }
     const data = await res.json();
     drawerLoading.classList.add('hidden');
-
-    if (!data.messages.length) {
-      drawerEmpty.classList.remove('hidden');
-      return;
-    }
-
+    if (!data.messages.length) { drawerEmpty.classList.remove('hidden'); return; }
     for (const msg of data.messages) {
       const msgEl  = document.createElement('div');  msgEl.className  = `message ${msg.role}`;
       const roleEl = document.createElement('span'); roleEl.className = 'role'; roleEl.textContent = msg.role;
@@ -749,89 +714,63 @@ function closeTranscript() {
 // ── Play Recording ────────────────────────────────────────────────────────────
 btnPlayRecording.addEventListener('click', () => {
   if (!currentTranscriptCallId) return;
-
-  // Toggle: if already showing player, hide it
-  if (!recordingPlayer.classList.contains('hidden')) {
-    _resetRecordingPlayer();
-    return;
-  }
-
+  if (!recordingPlayer.classList.contains('hidden')) { _resetRecordingPlayer(); return; }
   recordingPlayer.classList.remove('hidden');
   recordingError.classList.add('hidden');
   btnPlayRecording.classList.add('loading');
-
-  const src = `${BACKEND_URL}/logs/calls/${encodeURIComponent(currentTranscriptCallId)}/recording`;
-  recordingAudio.src = src;
+  recordingAudio.src = `${BACKEND_URL}/logs/calls/${encodeURIComponent(currentTranscriptCallId)}/recording`;
   recordingAudio.load();
 });
 
-recordingAudio.addEventListener('canplay', () => {
-  btnPlayRecording.classList.remove('loading');
-  btnPlayRecording.classList.add('playing');
-  recordingAudio.play().catch(() => {});  // auto-play best-effort
-});
-
-recordingAudio.addEventListener('error', () => {
-  btnPlayRecording.classList.remove('loading', 'playing');
-  recordingAudio.removeAttribute('src');
-  recordingError.textContent = 'Recording not available for this call.';
-  recordingError.classList.remove('hidden');
-});
-
-recordingAudio.addEventListener('ended', () => {
-  btnPlayRecording.classList.remove('playing');
-});
+recordingAudio.addEventListener('canplay',  () => { btnPlayRecording.classList.remove('loading'); btnPlayRecording.classList.add('playing'); recordingAudio.play().catch(() => {}); });
+recordingAudio.addEventListener('error',    () => { btnPlayRecording.classList.remove('loading', 'playing'); recordingAudio.removeAttribute('src'); recordingError.textContent = 'Recording not available for this call.'; recordingError.classList.remove('hidden'); });
+recordingAudio.addEventListener('ended',    () => { btnPlayRecording.classList.remove('playing'); });
 
 drawerClose.addEventListener('click', closeTranscript);
 drawerOverlay.addEventListener('click', e => { if (e.target === drawerOverlay) closeTranscript(); });
-
 btnRefreshLogs.addEventListener('click', () => loadLogs(true));
-btnLogMore.addEventListener('click', () => loadLogs(false));
+btnLogMore.addEventListener('click',     () => loadLogs(false));
 
-// ── Trigger loadLogs when Logs nav item is clicked ───────────────────────────
 document.querySelectorAll('.nav-item').forEach(item => {
-  if (item.dataset.page === 'logs') {
-    item.addEventListener('click', () => loadLogs(true));
-  }
+  if (item.dataset.page === 'logs')  item.addEventListener('click', () => loadLogs(true));
+  if (item.dataset.page === 'usage') item.addEventListener('click', () => loadUsage());
 });
 
-// ── Usage ─────────────────────────────────────────────────────────────────────
-const usageLoading       = document.getElementById('usage-loading');
-const usageMonthLabel    = document.getElementById('usage-month-label');
-const usagePrevBtn       = document.getElementById('usage-prev-month');
-const usageNextBtn       = document.getElementById('usage-next-month');
-const usageSubtitle      = document.getElementById('usage-subtitle');
+// ═════════════════════════════════════════════════════════════════════════════
+//  USAGE
+// ═════════════════════════════════════════════════════════════════════════════
+
+const usageLoading    = document.getElementById('usage-loading');
+const usageMonthLabel = document.getElementById('usage-month-label');
+const usagePrevBtn    = document.getElementById('usage-prev-month');
+const usageNextBtn    = document.getElementById('usage-next-month');
+const usageSubtitle   = document.getElementById('usage-subtitle');
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 let usageYear  = new Date().getFullYear();
-let usageMonth = new Date().getMonth() + 1; // 1-based
+let usageMonth = new Date().getMonth() + 1;
 
 function _drawChart(lineId, areaId, axisId, values, color) {
   const line = document.getElementById(lineId);
   const area = document.getElementById(areaId);
   const axis = document.getElementById(axisId);
   if (!line || !area) return;
-
   const n = values.length;
   if (n === 0 || values.every(v => v === 0)) {
     line.setAttribute('points', `0,75 300,75`);
     area.setAttribute('points', `0,80 0,75 300,75 300,80`);
     return;
   }
-
   const max = Math.max(...values) || 1;
   const pts = values.map((v, i) => {
     const x = n === 1 ? 150 : (i / (n - 1)) * 300;
     const y = 10 + (1 - v / max) * 65;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
-
   line.setAttribute('stroke', color);
   line.setAttribute('points', pts.join(' '));
   area.setAttribute('points', `0,80 ${pts.join(' ')} 300,80`);
-
-  // Axis labels: show 4 evenly spaced dates
   const spans = axis.querySelectorAll('span');
   const indices = [0, Math.floor(n / 3), Math.floor(2 * n / 3), n - 1];
   indices.forEach((idx, i) => {
@@ -847,30 +786,21 @@ async function loadUsage() {
   const monthName = MONTH_NAMES[usageMonth - 1];
   usageMonthLabel.textContent = `${monthName} ${usageYear}`;
   usageSubtitle.textContent   = `Analytics for ${monthName} ${usageYear}`;
-
-  // Disable next button if already on current month
   const now = new Date();
   const isCurrentMonth = usageYear === now.getFullYear() && usageMonth === (now.getMonth() + 1);
   usageNextBtn.disabled = isCurrentMonth;
   usageNextBtn.style.opacity = isCurrentMonth ? '0.35' : '1';
-
   try {
     const res = await fetch(`${BACKEND_URL}/logs/usage?year=${usageYear}&month=${usageMonth}`);
     if (!res.ok) throw new Error(`Server error ${res.status}`);
     const d = await res.json();
-
-    // Stat cards
     document.getElementById('usage-total-calls').textContent = d.total_calls;
     document.getElementById('usage-join-rate').innerHTML     = `${d.join_rate}<span class="usage-stat-unit">%</span>`;
     document.getElementById('usage-billed-min').innerHTML    = `${d.total_billed_min}<span class="usage-stat-unit">m</span>`;
     const avgMin = d.avg_dur_secs ? (d.avg_dur_secs / 60).toFixed(1) : '0';
     document.getElementById('usage-avg-dur').innerHTML       = `${avgMin}<span class="usage-stat-unit">m</span>`;
-
-    // Chart big numbers
     document.getElementById('usage-chart-calls-big').textContent = d.total_calls;
     document.getElementById('usage-chart-min-big').textContent   = `${d.total_billed_min}m`;
-
-    // Summary card
     const totalSecs = Math.round(d.total_billed_min * 60);
     const hrs = Math.floor(totalSecs / 3600), mins = Math.floor((totalSecs % 3600) / 60);
     document.getElementById('usage-summary-hrs').textContent   = `${hrs} hrs ${mins} min`;
@@ -878,28 +808,18 @@ async function loadUsage() {
     document.getElementById('usage-sum-calls').textContent     = d.total_calls;
     document.getElementById('usage-sum-min').textContent       = `${d.total_billed_min}m`;
     document.getElementById('usage-sum-avg').textContent       = avgMin + 'm';
-
-    // Days elapsed progress bar
-    const today      = new Date();
-    const daysTotal  = d.days_in_month;
-    const daysElapsed = isCurrentMonth
-      ? today.getDate()
-      : daysTotal;
+    const daysTotal   = d.days_in_month;
+    const daysElapsed = isCurrentMonth ? now.getDate() : daysTotal;
     const pct = Math.round((daysElapsed / daysTotal) * 100);
     document.getElementById('usage-days-bar').style.width    = `${pct}%`;
     document.getElementById('usage-days-caption').textContent =
-      isCurrentMonth
-        ? `${daysElapsed} of ${daysTotal} days elapsed this month`
-        : `${monthName} ${usageYear} — full month`;
-
-    // Charts
-    const callVals  = d.daily.map(x => x.calls);
-    const minVals   = d.daily.map(x => x.billed_min);
+      isCurrentMonth ? `${daysElapsed} of ${daysTotal} days elapsed this month` : `${monthName} ${usageYear} — full month`;
+    const callVals = d.daily.map(x => x.calls);
+    const minVals  = d.daily.map(x => x.billed_min);
     callVals._dates = d.daily.map(x => x.date);
     minVals._dates  = d.daily.map(x => x.date);
     _drawChart('usage-calls-line', 'usage-calls-area', 'usage-calls-axis', callVals, '#C8A951');
     _drawChart('usage-min-line',   'usage-min-area',   'usage-min-axis',   minVals,  '#C8A951');
-
   } catch (err) {
     document.getElementById('usage-summary-hrs').textContent = 'Error loading data';
     console.error('Usage load error:', err);
@@ -908,24 +828,13 @@ async function loadUsage() {
   }
 }
 
-usagePrevBtn.addEventListener('click', () => {
-  usageMonth--;
-  if (usageMonth < 1) { usageMonth = 12; usageYear--; }
-  loadUsage();
-});
-
+usagePrevBtn.addEventListener('click', () => { usageMonth--; if (usageMonth < 1) { usageMonth = 12; usageYear--; } loadUsage(); });
 usageNextBtn.addEventListener('click', () => {
   const now = new Date();
   if (usageYear === now.getFullYear() && usageMonth === now.getMonth() + 1) return;
   usageMonth++;
   if (usageMonth > 12) { usageMonth = 1; usageYear++; }
   loadUsage();
-});
-
-document.querySelectorAll('.nav-item').forEach(item => {
-  if (item.dataset.page === 'usage') {
-    item.addEventListener('click', () => loadUsage());
-  }
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
