@@ -414,7 +414,7 @@ let allCalls    = [];
 function initColResize() {
   if (colResizeInit) return;
   colResizeInit = true;
-  const defaults = { 'col-date': '10%', 'col-time': '8%', 'col-customer': '13%', 'col-dur': '7%', 'col-status': '8%', 'col-sentiment': '9%', 'col-takeaway': '31%', 'col-callback': '8%', 'col-action': '6%' };
+  const defaults = { 'col-date': '9%', 'col-time': '7%', 'col-customer': '11%', 'col-phone': '11%', 'col-dur': '6%', 'col-status': '7%', 'col-sentiment': '8%', 'col-takeaway': '27%', 'col-callback': '8%', 'col-action': '6%' };
   Object.entries(defaults).forEach(([id, w]) => {
     const col = document.getElementById(id);
     if (col) col.style.width = w;
@@ -510,6 +510,7 @@ function _renderRow(call) {
     <td class="log-date">${date}</td>
     <td class="log-time">${time}</td>
     <td class="log-customer">${_escHtml(customerName)}</td>
+    <td class="log-phone">${_escHtml(call.phone_number || '—')}</td>
     <td class="log-dur">${call.duration || '—'}</td>
     <td>${_statusBadge(call.endReason)}</td>
     <td>${_sentimentBadge(call.sentiment)}</td>
@@ -575,13 +576,14 @@ btnFilterClear.addEventListener('click', () => {
 // Export Excel
 btnExportExcel.addEventListener('click', () => {
   if (!allCalls.length) return;
-  const rows = [['Date', 'Time', 'Customer', 'Duration', 'Status', 'Sentiment', 'Takeaway', 'Callback']];
+  const rows = [['Date', 'Time', 'Customer', 'Phone', 'Duration', 'Status', 'Sentiment', 'Takeaway', 'Callback']];
   for (const c of allCalls) {
     const { date, time } = _formatDate(c.created);
     rows.push([
       date,
       time,
       c.customer_name || '',
+      c.phone_number  || '',
       c.duration      || '',
       c.endReason     || '',
       c.sentiment     || '',
