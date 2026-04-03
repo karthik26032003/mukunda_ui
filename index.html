@@ -342,21 +342,25 @@
           <table class="logs-table" id="logs-table">
             <colgroup>
               <col id="col-date">
+              <col id="col-time">
               <col id="col-customer">
               <col id="col-dur">
-              <col id="col-medium">
-              <col id="col-reason">
-              <col id="col-summary">
+              <col id="col-status">
+              <col id="col-sentiment">
+              <col id="col-takeaway">
+              <col id="col-callback">
               <col id="col-action">
             </colgroup>
             <thead>
               <tr>
                 <th data-col="col-date">Date</th>
+                <th data-col="col-time">Time</th>
                 <th data-col="col-customer">Customer</th>
                 <th data-col="col-dur">Duration</th>
-                <th data-col="col-medium">Medium</th>
-                <th data-col="col-reason">End Reason</th>
-                <th data-col="col-summary">Summary</th>
+                <th data-col="col-status">Status</th>
+                <th data-col="col-sentiment">Sentiment</th>
+                <th data-col="col-takeaway">Takeaway</th>
+                <th data-col="col-callback">Callback</th>
                 <th data-col="col-action"></th>
               </tr>
             </thead>
@@ -515,9 +519,6 @@
 
     </main>
   </div>
-
-  <!-- Summary popup -->
-  <div class="summary-popup hidden" id="summary-popup"></div>
 
   <!-- Transcript Drawer -->
   <div class="drawer-overlay hidden" id="drawer-overlay">

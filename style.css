@@ -856,11 +856,16 @@ input  { font-family: inherit; }
   font-weight: 500;
   white-space: nowrap;
 }
-.badge-phone   { background: #EDF4FF; color: #2563EB; }
-.badge-web     { background: var(--success-bg); color: var(--success); }
-.badge-other   { background: var(--cream); color: var(--muted); }
-.badge-hangup  { background: var(--cream); color: var(--muted); }
-.badge-error   { background: var(--error-bg); color: var(--error); }
+.badge-phone    { background: #EDF4FF; color: #2563EB; }
+.badge-web      { background: var(--success-bg); color: var(--success); }
+.badge-other    { background: var(--cream); color: var(--muted); }
+.badge-hangup   { background: var(--cream); color: var(--muted); }
+.badge-error    { background: var(--error-bg); color: var(--error); }
+.badge-positive { background: #d1fae5; color: #065f46; }
+.badge-neutral  { background: #e5e7eb; color: #6b7280; }
+.badge-negative { background: #fee2e2; color: #991b1b; }
+.badge-cb-yes   { background: #dbeafe; color: #1e40af; }
+.badge-cb-no    { background: #e5e7eb; color: #6b7280; }
 
 .btn-view {
   padding: 5px 14px;
@@ -1418,8 +1423,13 @@ body.dark .message.agent .text { background: rgba(200, 169, 81, 0.10); border-co
 body.dark .badge-phone  { background: rgba(37, 99, 235, 0.18); color: #7EB3FF; }
 body.dark .badge-web    { background: rgba(40, 121, 90, 0.18); color: #6EE7B7; }
 body.dark .badge-other,
-body.dark .badge-hangup { background: rgba(255,255,255,0.05); color: var(--muted); }
-body.dark .badge-error  { background: rgba(184, 50, 50, 0.18); color: #F87171; }
+body.dark .badge-hangup  { background: rgba(255,255,255,0.05); color: var(--muted); }
+body.dark .badge-error   { background: rgba(184, 50, 50, 0.18); color: #F87171; }
+body.dark .badge-positive { background: rgba(16, 185, 129, 0.15); color: #6EE7B7; }
+body.dark .badge-neutral  { background: rgba(255,255,255,0.05); color: var(--muted); }
+body.dark .badge-negative { background: rgba(184, 50, 50, 0.15); color: #F87171; }
+body.dark .badge-cb-yes   { background: rgba(37, 99, 235, 0.15); color: #7EB3FF; }
+body.dark .badge-cb-no    { background: rgba(255,255,255,0.05); color: var(--muted); }
 
 /* Usage page */
 body.dark .usage-stat-card,

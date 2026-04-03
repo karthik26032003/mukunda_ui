@@ -390,7 +390,6 @@ const logsTbody      = document.getElementById('logs-tbody');
 const logsPagination = document.getElementById('logs-pagination');
 const btnLogMore     = document.getElementById('btn-logs-more');
 const btnRefreshLogs = document.getElementById('btn-refresh-logs');
-const summaryPopup   = document.getElementById('summary-popup');
 
 // Transcript modal
 const drawerOverlay         = document.getElementById('drawer-overlay');
@@ -415,7 +414,7 @@ let allCalls    = [];
 function initColResize() {
   if (colResizeInit) return;
   colResizeInit = true;
-  const defaults = { 'col-date': '14%', 'col-customer': '13%', 'col-dur': '8%', 'col-medium': '8%', 'col-reason': '10%', 'col-summary': '43%', 'col-action': '4%' };
+  const defaults = { 'col-date': '10%', 'col-time': '8%', 'col-customer': '13%', 'col-dur': '7%', 'col-status': '8%', 'col-sentiment': '9%', 'col-takeaway': '31%', 'col-callback': '8%', 'col-action': '6%' };
   Object.entries(defaults).forEach(([id, w]) => {
     const col = document.getElementById(id);
     if (col) col.style.width = w;
@@ -452,49 +451,43 @@ function initColResize() {
   });
 }
 
-// ── Summary popup ─────────────────────────────────────────────────────────────
-function showSummaryPopup(td, fullText) {
-  summaryPopup.textContent = fullText;
-  summaryPopup.classList.remove('hidden');
-  const rect = td.getBoundingClientRect();
-  let top  = rect.bottom + 6, left = rect.left;
-  if (left + 360 > window.innerWidth)  left = window.innerWidth - 370;
-  if (top  + 160 > window.innerHeight) top  = rect.top - summaryPopup.offsetHeight - 6;
-  summaryPopup.style.top  = top  + 'px';
-  summaryPopup.style.left = left + 'px';
-}
-function hideSummaryPopup() { summaryPopup.classList.add('hidden'); }
-
-document.addEventListener('click', e => {
-  if (!summaryPopup.classList.contains('hidden') && !summaryPopup.contains(e.target) && !e.target.classList.contains('log-summary'))
-    hideSummaryPopup();
-});
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { hideSummaryPopup(); closeTranscript(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTranscript(); });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function _formatDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return { date: '—', time: '—' };
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-      + ' ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-  } catch (_) { return iso; }
+    return {
+      date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    };
+  } catch (_) { return { date: iso, time: '' }; }
 }
 
-function _mediumBadge(medium) {
-  if (!medium) return '<span class="badge badge-other">—</span>';
-  if (['plivo','twilio','telnyx','exotel','sip'].includes(medium))
-    return `<span class="badge badge-phone">${medium}</span>`;
-  if (medium === 'webRtc' || medium === 'webSocket')
-    return `<span class="badge badge-web">Web</span>`;
-  return `<span class="badge badge-other">${medium}</span>`;
-}
-
-function _endReasonBadge(reason) {
+function _statusBadge(reason) {
   if (!reason) return '<span class="badge badge-other">—</span>';
-  if (reason.toLowerCase().includes('error') || reason.toLowerCase().includes('fail'))
+  const r = reason.toLowerCase();
+  if (r.includes('error') || r.includes('fail'))
     return `<span class="badge badge-error">${reason}</span>`;
-  return `<span class="badge badge-hangup">${reason}</span>`;
+  if (r === 'hangup' || r === 'hang_up')
+    return `<span class="badge badge-hangup">hangup</span>`;
+  return `<span class="badge badge-other">${reason}</span>`;
+}
+
+function _sentimentBadge(sentiment) {
+  if (!sentiment) return '<span class="badge badge-other">—</span>';
+  const cls = sentiment === 'positive' ? 'badge-positive'
+            : sentiment === 'negative' ? 'badge-negative'
+            : 'badge-neutral';
+  return `<span class="badge ${cls}">${sentiment}</span>`;
+}
+
+function _callbackBadge(callback) {
+  if (callback === null || callback === undefined) return '<span class="badge badge-other">—</span>';
+  return callback
+    ? '<span class="badge badge-cb-yes">Yes</span>'
+    : '<span class="badge badge-cb-no">No</span>';
 }
 
 function _setLogsView(view) {
@@ -510,27 +503,20 @@ function _escHtml(s) {
 
 function _renderRow(call) {
   const tr = document.createElement('tr');
-  const summaryText = call.shortSummary || '';
+  const { date, time } = _formatDate(call.created);
   const customerName = call.customer_name || '—';
+  const takeawayText = call.takeaway || '—';
   tr.innerHTML = `
-    <td class="log-date">${_formatDate(call.created)}</td>
+    <td class="log-date">${date}</td>
+    <td class="log-time">${time}</td>
     <td class="log-customer">${_escHtml(customerName)}</td>
     <td class="log-dur">${call.duration || '—'}</td>
-    <td>${_mediumBadge(call.medium)}</td>
-    <td>${_endReasonBadge(call.endReason)}</td>
-    <td class="log-summary" title="${_escHtml(summaryText)}">${summaryText ? _escHtml(summaryText) : '<span style="color:var(--muted)">—</span>'}</td>
+    <td>${_statusBadge(call.endReason)}</td>
+    <td>${_sentimentBadge(call.sentiment)}</td>
+    <td class="log-takeaway" title="${_escHtml(takeawayText)}">${_escHtml(takeawayText)}</td>
+    <td>${_callbackBadge(call.callback)}</td>
     <td class="td-action"><button class="btn-view">View</button></td>
   `;
-  const summaryTd = tr.querySelector('.log-summary');
-  if (summaryText) {
-    summaryTd.addEventListener('click', e => {
-      e.stopPropagation();
-      if (!summaryPopup.classList.contains('hidden') && summaryPopup.textContent === summaryText)
-        hideSummaryPopup();
-      else
-        showSummaryPopup(summaryTd, summaryText);
-    });
-  }
   tr.querySelector('.btn-view').addEventListener('click', () => openTranscript(call.callId));
   return tr;
 }
@@ -589,15 +575,18 @@ btnFilterClear.addEventListener('click', () => {
 // Export Excel
 btnExportExcel.addEventListener('click', () => {
   if (!allCalls.length) return;
-  const rows = [['Date', 'Customer', 'Duration', 'Medium', 'End Reason', 'Summary']];
+  const rows = [['Date', 'Time', 'Customer', 'Duration', 'Status', 'Sentiment', 'Takeaway', 'Callback']];
   for (const c of allCalls) {
+    const { date, time } = _formatDate(c.created);
     rows.push([
-      c.created ? new Date(c.created).toLocaleString('en-IN') : '',
+      date,
+      time,
       c.customer_name || '',
-      c.duration    || '',
-      c.medium      || '',
-      c.endReason   || '',
-      c.shortSummary || '',
+      c.duration      || '',
+      c.endReason     || '',
+      c.sentiment     || '',
+      c.takeaway      || '',
+      c.callback === true ? 'Yes' : c.callback === false ? 'No' : '',
     ]);
   }
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
